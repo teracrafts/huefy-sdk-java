@@ -1,4 +1,4 @@
-package dev.huefy.sdk.exceptions;
+package com.teracrafts.huefy.exceptions;
 
 /**
  * Exception thrown when an email provider rejects or fails to send an email.

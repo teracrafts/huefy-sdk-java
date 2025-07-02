@@ -1,4 +1,4 @@
-package dev.huefy.sdk.models;
+package com.teracrafts.huefy.models;
 
 import org.junit.jupiter.api.Test;
 

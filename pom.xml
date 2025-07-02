@@ -195,14 +195,6 @@
                 <configuration>
                     <doclint>none</doclint>
                     <source>11</source>
-                    <failOnError>false</failOnError>
-                    <quiet>true</quiet>
-                    <additionalOptions>
-                        <additionalOption>-Xdoclint:none</additionalOption>
-                    </additionalOptions>
-                    <additionalJOptions>
-                        <additionalJOption>-J-Duser.language=en</additionalJOption>
-                    </additionalJOptions>
                 </configuration>
                 <executions>
                     <execution>

@@ -1,4 +1,4 @@
-package dev.huefy.sdk;
+package com.teracrafts.huefy;
 
 import java.time.Duration;
 

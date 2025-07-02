@@ -1,4 +1,4 @@
-package dev.huefy.sdk.exceptions;
+package com.teracrafts.huefy.exceptions;
 
 /**
  * Base exception class for all Huefy SDK exceptions.

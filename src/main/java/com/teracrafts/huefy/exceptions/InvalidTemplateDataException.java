@@ -1,4 +1,4 @@
-package dev.huefy.sdk.exceptions;
+package com.teracrafts.huefy.exceptions;
 
 import java.util.List;
 

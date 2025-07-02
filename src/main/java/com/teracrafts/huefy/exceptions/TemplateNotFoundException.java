@@ -1,4 +1,4 @@
-package dev.huefy.sdk.exceptions;
+package com.teracrafts.huefy.exceptions;
 
 /**
  * Exception thrown when a specified email template is not found.
