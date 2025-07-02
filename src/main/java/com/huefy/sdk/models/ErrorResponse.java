@@ -58,7 +58,7 @@ public class ErrorResponse {
  * <p>This class contains the specific error code, human-readable message,
  * and any additional details that may help in troubleshooting the error.</p>
  */
-class ErrorDetail {
+public class ErrorDetail {
     @JsonProperty("code")
     private String code;
     
