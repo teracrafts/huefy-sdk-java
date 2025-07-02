@@ -6,7 +6,7 @@
 
     <groupId>dev.huefy</groupId>
     <artifactId>huefy-java-sdk</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0-beta.4</version>
     <packaging>jar</packaging>
 
     <name>Huefy Java SDK</name>
