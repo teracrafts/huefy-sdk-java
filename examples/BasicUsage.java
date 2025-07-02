@@ -1,10 +1,10 @@
-package com.huefy.sdk.examples;
+package dev.huefy.sdk.examples;
 
-import com.huefy.sdk.HuefyClient;
-import com.huefy.sdk.config.HuefyConfig;
-import com.huefy.sdk.config.RetryConfig;
-import com.huefy.sdk.exceptions.*;
-import com.huefy.sdk.models.*;
+import dev.huefy.sdk.HuefyClient;
+import dev.huefy.sdk.HuefyClientConfig;
+import dev.huefy.sdk.RetryConfig;
+import dev.huefy.sdk.exceptions.*;
+import dev.huefy.sdk.models.*;
 
 import java.time.Duration;
 import java.util.*;

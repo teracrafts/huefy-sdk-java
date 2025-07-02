@@ -1,9 +1,9 @@
-package com.huefy.sdk;
+package dev.huefy.sdk;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.huefy.sdk.exceptions.*;
-import com.huefy.sdk.models.*;
+import dev.huefy.sdk.exceptions.*;
+import dev.huefy.sdk.models.*;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;

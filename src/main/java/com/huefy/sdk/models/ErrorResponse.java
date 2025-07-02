@@ -1,4 +1,4 @@
-package com.huefy.sdk.models;
+package dev.huefy.sdk.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

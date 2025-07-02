@@ -1,4 +1,4 @@
-package com.huefy.sdk.exceptions;
+package dev.huefy.sdk.exceptions;
 
 /**
  * Exception thrown when network-related errors occur.

@@ -1,4 +1,4 @@
-package com.huefy.sdk.exceptions;
+package dev.huefy.sdk.exceptions;
 
 /**
  * Base exception class for all Huefy SDK exceptions.

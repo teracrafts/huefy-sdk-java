@@ -1,10 +1,10 @@
-package com.huefy.sdk;
+package dev.huefy.sdk;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.huefy.sdk.exceptions.*;
-import com.huefy.sdk.models.*;
+import dev.huefy.sdk.exceptions.*;
+import dev.huefy.sdk.models.*;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

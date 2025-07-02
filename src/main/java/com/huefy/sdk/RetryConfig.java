@@ -1,4 +1,4 @@
-package com.huefy.sdk;
+package dev.huefy.sdk;
 
 import java.time.Duration;
 
