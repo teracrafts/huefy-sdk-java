@@ -4,14 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>dev.huefy</groupId>
-    <artifactId>huefy-java-sdk</artifactId>
+    <groupId>com.teracrafts</groupId>
+    <artifactId>huefy</artifactId>
     <version>1.0.0-beta.9</version>
     <packaging>jar</packaging>
 
     <name>Huefy Java SDK</name>
-    <description>Official Java SDK for the Huefy email sending platform</description>
-    <url>https://github.com/huefy/huefy-sdk</url>
+    <description>Official Java SDK for Huefy - App Mail Templates with dynamic email sending</description>
+    <url>https://github.com/teracrafts/huefy-sdk</url>
 
     <licenses>
         <license>
@@ -33,7 +33,7 @@
     <scm>
         <connection>scm:git:git://github.com/huefy/huefy-sdk.git</connection>
         <developerConnection>scm:git:ssh://github.com:huefy/huefy-sdk.git</developerConnection>
-        <url>https://github.com/huefy/huefy-sdk/tree/main</url>
+        <url>https://github.com/teracrafts/huefy-sdk/tree/main</url>
     </scm>
 
     <properties>
