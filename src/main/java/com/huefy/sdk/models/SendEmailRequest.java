@@ -42,7 +42,7 @@ public class SendEmailRequest {
     @JsonProperty("recipient")
     private final String recipient;
     
-    @JsonProperty("provider")
+    @JsonProperty("providerType")
     private final EmailProvider provider;
     
     private SendEmailRequest(Builder builder) {

@@ -15,17 +15,17 @@ import java.time.Instant;
  * @since 1.0.0
  */
 public class SendEmailResponse {
+    @JsonProperty("success")
+    private boolean success;
+    
+    @JsonProperty("message")
+    private String message;
+    
     @JsonProperty("messageId")
     private String messageId;
     
-    @JsonProperty("status")
-    private String status;
-    
     @JsonProperty("provider")
     private EmailProvider provider;
-    
-    @JsonProperty("timestamp")
-    private Instant timestamp;
     
     /**
      * Default constructor for JSON deserialization.
@@ -36,16 +36,52 @@ public class SendEmailResponse {
     /**
      * Constructor for creating a SendEmailResponse.
      * 
+     * @param success whether the email was sent successfully
+     * @param message human-readable status message
      * @param messageId the unique message ID
-     * @param status the email status
      * @param provider the email provider used
-     * @param timestamp the timestamp when the email was sent
      */
-    public SendEmailResponse(String messageId, String status, EmailProvider provider, Instant timestamp) {
+    public SendEmailResponse(boolean success, String message, String messageId, EmailProvider provider) {
+        this.success = success;
+        this.message = message;
         this.messageId = messageId;
-        this.status = status;
         this.provider = provider;
-        this.timestamp = timestamp;
+    }
+    
+    /**
+     * Returns whether the email was sent successfully.
+     * 
+     * @return true if the email was sent successfully
+     */
+    public boolean isSuccess() {
+        return success;
+    }
+    
+    /**
+     * Sets the success status.
+     * 
+     * @param success the success status
+     */
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
+    
+    /**
+     * Returns the human-readable status message.
+     * 
+     * @return the status message
+     */
+    public String getMessage() {
+        return message;
+    }
+    
+    /**
+     * Sets the status message.
+     * 
+     * @param message the status message
+     */
+    public void setMessage(String message) {
+        this.message = message;
     }
     
     /**
@@ -67,24 +103,6 @@ public class SendEmailResponse {
     }
     
     /**
-     * Returns the status of the email.
-     * 
-     * @return the email status (e.g., "sent", "queued")
-     */
-    public String getStatus() {
-        return status;
-    }
-    
-    /**
-     * Sets the email status.
-     * 
-     * @param status the email status
-     */
-    public void setStatus(String status) {
-        this.status = status;
-    }
-    
-    /**
      * Returns the email provider that was used to send the email.
      * 
      * @return the email provider
@@ -102,31 +120,13 @@ public class SendEmailResponse {
         this.provider = provider;
     }
     
-    /**
-     * Returns the timestamp when the email was sent.
-     * 
-     * @return the timestamp
-     */
-    public Instant getTimestamp() {
-        return timestamp;
-    }
-    
-    /**
-     * Sets the timestamp.
-     * 
-     * @param timestamp the timestamp
-     */
-    public void setTimestamp(Instant timestamp) {
-        this.timestamp = timestamp;
-    }
-    
     @Override
     public String toString() {
         return "SendEmailResponse{" +
-                "messageId='" + messageId + '\'' +
-                ", status='" + status + '\'' +
+                "success=" + success +
+                ", message='" + message + '\'' +
+                ", messageId='" + messageId + '\'' +
                 ", provider=" + provider +
-                ", timestamp=" + timestamp +
                 '}';
     }
 }
