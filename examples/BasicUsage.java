@@ -197,7 +197,7 @@ public class BasicUsage {
             .build();
 
         HuefyConfig config = HuefyConfig.builder()
-            .baseUrl("https://api.huefy.com")
+            .baseUrl("https://api.huefy.dev")
             .timeout(Duration.ofSeconds(45))
             .connectTimeout(Duration.ofSeconds(15))
             .retryConfig(retryConfig)

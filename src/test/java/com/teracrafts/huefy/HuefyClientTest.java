@@ -37,6 +37,7 @@ class HuefyClientTest {
         String baseUrl = mockWebServer.url("/").toString();
         HuefyClientConfig config = HuefyClientConfig.builder()
             .baseUrl(baseUrl)
+            .proxyUrl(null) // Disable proxy for direct API tests
             .connectTimeout(Duration.ofSeconds(5))
             .readTimeout(Duration.ofSeconds(5))
             .retryConfig(RetryConfig.builder().enabled(false).build()) // Disable retries for tests
@@ -76,10 +77,10 @@ class HuefyClientTest {
     void sendEmail_withValidRequest_returnsSuccessResponse() throws Exception {
         // Arrange
         SendEmailResponse expectedResponse = new SendEmailResponse(
+            true,
+            "Email sent successfully",
             "msg-123",
-            "sent",
-            EmailProvider.SES,
-            Instant.now()
+            EmailProvider.SES
         );
         
         mockWebServer.enqueue(new MockResponse()
@@ -99,7 +100,8 @@ class HuefyClientTest {
         // Assert
         assertThat(response).isNotNull();
         assertThat(response.getMessageId()).isEqualTo("msg-123");
-        assertThat(response.getStatus()).isEqualTo("sent");
+        assertThat(response.isSuccess()).isTrue();
+        assertThat(response.getMessage()).isEqualTo("Email sent successfully");
         assertThat(response.getProvider()).isEqualTo(EmailProvider.SES);
         
         // Verify request
@@ -225,10 +227,10 @@ class HuefyClientTest {
         BulkEmailResponse expectedResponse = new BulkEmailResponse(
             List.of(
                 new BulkEmailResponse.BulkEmailResult(
-                    new SendEmailResponse("msg-123", "sent", EmailProvider.SES, Instant.now())
+                    new SendEmailResponse(true, "Email sent successfully", "msg-123", EmailProvider.SES)
                 ),
                 new BulkEmailResponse.BulkEmailResult(
-                    new SendEmailResponse("msg-456", "sent", EmailProvider.SES, Instant.now())
+                    new SendEmailResponse(true, "Email sent successfully", "msg-456", EmailProvider.SES)
                 )
             )
         );
@@ -329,7 +331,7 @@ class HuefyClientTest {
     }
     
     @Test
-    void sendEmail_withNetworkError_throwsNetworkException() {
+    void sendEmail_withNetworkError_throwsNetworkException() throws Exception {
         // Arrange
         mockWebServer.shutdown(); // Simulate network failure
         

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InvalidTemplateDataException.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Huefy Java SDK</a> &gt; <a href="index.source.html" class="el_package">com.teracrafts.huefy.exceptions</a> &gt; <span class="el_source">InvalidTemplateDataException.java</span></div><h1>InvalidTemplateDataException.java</h1><pre class="source lang-java linenums">package com.teracrafts.huefy.exceptions;
+
+import java.util.List;
+
+/**
+ * Exception thrown when template data validation fails.
+ * 
+ * &lt;p&gt;This exception is thrown when the data provided for a template
+ * doesn't match the template's requirements, such as missing required
+ * fields or invalid data types.&lt;/p&gt;
+ * 
+ * @author Huefy Team
+ * @since 1.0.0
+ */
+public class InvalidTemplateDataException extends HuefyException {
+    private static final long serialVersionUID = 1L;
+    
+    private final List&lt;String&gt; validationErrors;
+    
+    /**
+     * Creates a new InvalidTemplateDataException with the specified message.
+     * 
+     * @param message the error message
+     */
+    public InvalidTemplateDataException(String message) {
+<span class="nc" id="L26">        this(message, null);</span>
+<span class="nc" id="L27">    }</span>
+    
+    /**
+     * Creates a new InvalidTemplateDataException with the specified message and validation errors.
+     * 
+     * @param message the error message
+     * @param validationErrors the list of validation errors
+     */
+    public InvalidTemplateDataException(String message, List&lt;String&gt; validationErrors) {
+<span class="nc" id="L36">        super(message);</span>
+<span class="nc" id="L37">        this.validationErrors = validationErrors;</span>
+<span class="nc" id="L38">    }</span>
+    
+    /**
+     * Creates a new InvalidTemplateDataException with the specified message, validation errors, and cause.
+     * 
+     * @param message the error message
+     * @param validationErrors the list of validation errors
+     * @param cause the underlying cause
+     */
+    public InvalidTemplateDataException(String message, List&lt;String&gt; validationErrors, Throwable cause) {
+<span class="nc" id="L48">        super(message, cause);</span>
+<span class="nc" id="L49">        this.validationErrors = validationErrors;</span>
+<span class="nc" id="L50">    }</span>
+    
+    /**
+     * Returns the list of validation errors.
+     * 
+     * @return the validation errors, or null if not available
+     */
+    public List&lt;String&gt; getValidationErrors() {
+<span class="nc" id="L58">        return validationErrors;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

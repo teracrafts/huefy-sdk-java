@@ -1,0 +1,463 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HuefyClient.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Huefy Java SDK</a> &gt; <a href="index.source.html" class="el_package">com.teracrafts.huefy</a> &gt; <span class="el_source">HuefyClient.java</span></div><h1>HuefyClient.java</h1><pre class="source lang-java linenums">package com.teracrafts.huefy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.teracrafts.huefy.exceptions.*;
+import com.teracrafts.huefy.models.*;
+import okhttp3.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Main client for the Huefy email sending platform.
+ * 
+ * &lt;p&gt;The HuefyClient provides a simple interface for sending template-based emails
+ * through the Huefy API with support for multiple email providers, retry logic,
+ * and comprehensive error handling.&lt;/p&gt;
+ * 
+ * &lt;p&gt;Basic usage:&lt;/p&gt;
+ * &lt;pre&gt;{@code
+ * HuefyClient client = new HuefyClient(&quot;your-api-key&quot;);
+ * 
+ * SendEmailRequest request = SendEmailRequest.builder()
+ *     .templateKey(&quot;welcome-email&quot;)
+ *     .recipient(&quot;john@example.com&quot;)
+ *     .data(Map.of(&quot;name&quot;, &quot;John Doe&quot;, &quot;company&quot;, &quot;Acme Corp&quot;))
+ *     .build();
+ * 
+ * SendEmailResponse response = client.sendEmail(request);
+ * System.out.println(&quot;Email sent: &quot; + response.getMessageId());
+ * }&lt;/pre&gt;
+ * 
+ * @author Huefy Team
+ * @since 1.0.0
+ */
+public class HuefyClient {
+<span class="fc" id="L42">    private static final Logger logger = LoggerFactory.getLogger(HuefyClient.class);</span>
+    
+    private static final String DEFAULT_BASE_URL = &quot;https://api.huefy.dev&quot;;
+    private static final String USER_AGENT = &quot;Huefy-Java-SDK/1.0.0&quot;;
+<span class="fc" id="L46">    private static final MediaType JSON = MediaType.get(&quot;application/json; charset=utf-8&quot;);</span>
+    
+    private final String apiKey;
+    private final String proxyUrl;
+    private final String baseUrl;
+    private final OkHttpClient httpClient;
+    private final ObjectMapper objectMapper;
+    private final RetryConfig retryConfig;
+    
+    /**
+     * Creates a new HuefyClient with the specified API key and default configuration.
+     * 
+     * @param apiKey the Huefy API key
+     * @throws IllegalArgumentException if apiKey is null or empty
+     */
+    public HuefyClient(String apiKey) {
+<span class="nc" id="L62">        this(apiKey, HuefyClientConfig.builder().build());</span>
+<span class="nc" id="L63">    }</span>
+    
+    /**
+     * Creates a new HuefyClient with the specified API key and configuration.
+     * 
+     * @param apiKey the Huefy API key
+     * @param config the client configuration
+     * @throws IllegalArgumentException if apiKey is null or empty
+     */
+<span class="fc" id="L72">    public HuefyClient(String apiKey, HuefyClientConfig config) {</span>
+<span class="fc bfc" id="L73" title="All 4 branches covered.">        if (apiKey == null || apiKey.trim().isEmpty()) {</span>
+<span class="fc" id="L74">            throw new IllegalArgumentException(&quot;API key cannot be null or empty&quot;);</span>
+        }
+        
+<span class="fc" id="L77">        this.apiKey = apiKey.trim();</span>
+<span class="fc" id="L78">        this.proxyUrl = config.getProxyUrl();</span>
+<span class="pc bpc" id="L79" title="1 of 2 branches missed.">        this.baseUrl = config.getBaseUrl() != null ? config.getBaseUrl() : DEFAULT_BASE_URL;</span>
+<span class="fc" id="L80">        this.retryConfig = config.getRetryConfig();</span>
+        
+        // Configure ObjectMapper
+<span class="fc" id="L83">        this.objectMapper = new ObjectMapper();</span>
+<span class="fc" id="L84">        this.objectMapper.registerModule(new JavaTimeModule());</span>
+        
+        // Configure HTTP client
+<span class="fc" id="L87">        OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder()</span>
+<span class="fc" id="L88">            .connectTimeout(config.getConnectTimeout())</span>
+<span class="fc" id="L89">            .readTimeout(config.getReadTimeout())</span>
+<span class="fc" id="L90">            .writeTimeout(config.getWriteTimeout())</span>
+<span class="fc" id="L91">            .addInterceptor(new UserAgentInterceptor())</span>
+<span class="fc" id="L92">            .addInterceptor(new AuthenticationInterceptor(apiKey));</span>
+        
+<span class="pc bpc" id="L94" title="1 of 2 branches missed.">        if (config.getRetryConfig().isEnabled()) {</span>
+<span class="nc" id="L95">            httpClientBuilder.addInterceptor(new RetryInterceptor(retryConfig));</span>
+        }
+        
+<span class="fc" id="L98">        this.httpClient = httpClientBuilder.build();</span>
+        
+<span class="fc" id="L100">        logger.debug(&quot;HuefyClient initialized with base URL: {}&quot;, this.baseUrl);</span>
+<span class="fc" id="L101">    }</span>
+    
+    /**
+     * Sends a single email using a template.
+     * 
+     * @param request the email request
+     * @return the email response
+     * @throws HuefyException if the request fails
+     * @throws IllegalArgumentException if request is null or invalid
+     */
+    public SendEmailResponse sendEmail(SendEmailRequest request) throws HuefyException {
+<span class="fc bfc" id="L112" title="All 2 branches covered.">        if (request == null) {</span>
+<span class="fc" id="L113">            throw new IllegalArgumentException(&quot;Request cannot be null&quot;);</span>
+        }
+        
+<span class="fc" id="L116">        request.validate();</span>
+<span class="fc" id="L117">        return makeRequest(&quot;POST&quot;, &quot;/emails/send&quot;, request, SendEmailResponse.class);</span>
+    }
+    
+    /**
+     * Sends multiple emails in a single request.
+     * 
+     * @param requests the list of email requests
+     * @return the bulk email response
+     * @throws HuefyException if the request fails
+     * @throws IllegalArgumentException if requests is null, empty, or contains invalid requests
+     */
+    public BulkEmailResponse sendBulkEmails(List&lt;SendEmailRequest&gt; requests) throws HuefyException {
+<span class="fc bfc" id="L129" title="All 4 branches covered.">        if (requests == null || requests.isEmpty()) {</span>
+<span class="fc" id="L130">            throw new IllegalArgumentException(&quot;Requests list cannot be null or empty&quot;);</span>
+        }
+        
+        // Validate all requests
+<span class="fc bfc" id="L134" title="All 2 branches covered.">        for (int i = 0; i &lt; requests.size(); i++) {</span>
+            try {
+<span class="fc" id="L136">                requests.get(i).validate();</span>
+<span class="fc" id="L137">            } catch (IllegalArgumentException e) {</span>
+<span class="fc" id="L138">                throw new IllegalArgumentException(&quot;Validation failed for request &quot; + i + &quot;: &quot; + e.getMessage(), e);</span>
+<span class="fc" id="L139">            }</span>
+        }
+        
+<span class="fc" id="L142">        BulkEmailRequest bulkRequest = new BulkEmailRequest(requests);</span>
+<span class="fc" id="L143">        return makeRequest(&quot;POST&quot;, &quot;/emails/bulk&quot;, bulkRequest, BulkEmailResponse.class);</span>
+    }
+    
+    /**
+     * Checks the health status of the Huefy API.
+     * 
+     * @return the health response
+     * @throws HuefyException if the request fails
+     */
+    public HealthResponse healthCheck() throws HuefyException {
+<span class="fc" id="L153">        return makeRequest(&quot;GET&quot;, &quot;/health&quot;, null, HealthResponse.class);</span>
+    }
+    
+    /**
+     * Handles HTTP responses and converts them to appropriate objects or exceptions.
+     * 
+     * @param response the HTTP response
+     * @param responseClass the expected response class
+     * @param &lt;T&gt; the response type
+     * @return the deserialized response object
+     * @throws HuefyException if the response indicates an error
+     */
+    /**
+     * Makes an HTTP request using proxy or direct API based on configuration.
+     */
+    private &lt;T&gt; T makeRequest(String method, String endpoint, Object data, Class&lt;T&gt; responseClass) throws HuefyException {
+        try {
+            String requestUrl;
+            Object requestData;
+            
+            // Use proxy if configured, otherwise direct API
+<span class="pc bpc" id="L174" title="3 of 4 branches missed.">            if (proxyUrl != null &amp;&amp; !proxyUrl.isEmpty()) {</span>
+<span class="nc" id="L175">                requestUrl = proxyUrl;</span>
+                // Create proxy request with configuration
+<span class="nc" id="L177">                ProxyRequest proxyRequest = new ProxyRequest();</span>
+<span class="nc" id="L178">                proxyRequest.config = new ProxyConfig();</span>
+<span class="nc" id="L179">                proxyRequest.config.apiKey = this.apiKey;</span>
+<span class="nc" id="L180">                proxyRequest.config.timeout = (int) (retryConfig.getBaseDelay().toMillis() * retryConfig.getMaxRetries());</span>
+<span class="nc" id="L181">                proxyRequest.method = method;</span>
+<span class="nc" id="L182">                proxyRequest.endpoint = endpoint;</span>
+<span class="nc" id="L183">                proxyRequest.data = data;</span>
+<span class="nc" id="L184">                requestData = proxyRequest;</span>
+<span class="nc" id="L185">                method = &quot;POST&quot;; // Always POST to proxy</span>
+<span class="nc" id="L186">            } else {</span>
+                // Ensure no double slashes
+<span class="pc bpc" id="L188" title="1 of 2 branches missed.">                String cleanBaseUrl = baseUrl.endsWith(&quot;/&quot;) ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;</span>
+<span class="fc" id="L189">                requestUrl = cleanBaseUrl + &quot;/api/v1/sdk&quot; + endpoint;</span>
+<span class="fc" id="L190">                requestData = data;</span>
+            }
+            
+<span class="fc" id="L193">            String jsonBody = objectMapper.writeValueAsString(requestData);</span>
+<span class="fc" id="L194">            RequestBody body = RequestBody.create(jsonBody, JSON);</span>
+            
+<span class="fc" id="L196">            Request.Builder requestBuilder = new Request.Builder().url(requestUrl);</span>
+            
+<span class="fc bfc" id="L198" title="All 2 branches covered.">            if (&quot;POST&quot;.equals(method)) {</span>
+<span class="fc" id="L199">                requestBuilder.post(body);</span>
+<span class="pc bpc" id="L200" title="1 of 2 branches missed.">            } else if (&quot;GET&quot;.equals(method)) {</span>
+<span class="fc" id="L201">                requestBuilder.get();</span>
+            }
+            
+<span class="fc" id="L204">            Request httpRequest = requestBuilder.build();</span>
+            
+<span class="fc" id="L206">            try (Response response = httpClient.newCall(httpRequest).execute()) {</span>
+<span class="pc bpc" id="L207" title="3 of 4 branches missed.">                if (proxyUrl != null &amp;&amp; !proxyUrl.isEmpty()) {</span>
+<span class="nc" id="L208">                    return handleProxyResponse(response, responseClass);</span>
+                } else {
+<span class="fc" id="L210">                    return handleResponse(response, responseClass);</span>
+                }
+<span class="nc bnc" id="L212" title="All 2 branches missed.">            }</span>
+<span class="nc" id="L213">        } catch (JsonProcessingException e) {</span>
+<span class="nc" id="L214">            throw new HuefyException(&quot;Failed to serialize request&quot;, e);</span>
+<span class="fc" id="L215">        } catch (IOException e) {</span>
+<span class="fc" id="L216">            throw new NetworkException(&quot;Network error occurred&quot;, e);</span>
+        }
+    }
+    
+    /**
+     * Handles proxy response format.
+     */
+    private &lt;T&gt; T handleProxyResponse(Response response, Class&lt;T&gt; responseClass) throws HuefyException {
+        try {
+<span class="nc" id="L225">            String responseBody = response.body().string();</span>
+<span class="nc" id="L226">            ProxyResponse proxyResponse = objectMapper.readValue(responseBody, ProxyResponse.class);</span>
+            
+<span class="nc bnc" id="L228" title="All 2 branches missed.">            if (!proxyResponse.success) {</span>
+<span class="nc" id="L229">                ProxyError error = proxyResponse.error;</span>
+<span class="nc" id="L230">                throw new HuefyException(</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">                    error != null ? error.message : &quot;Unknown proxy error&quot;,</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">                    error != null ? new RuntimeException(error.code) : null</span>
+                );
+            }
+            
+<span class="nc" id="L236">            return objectMapper.convertValue(proxyResponse.data, responseClass);</span>
+<span class="nc" id="L237">        } catch (IOException e) {</span>
+<span class="nc" id="L238">            throw new NetworkException(&quot;Failed to read proxy response&quot;, e);</span>
+        }
+    }
+    
+    private &lt;T&gt; T handleResponse(Response response, Class&lt;T&gt; responseClass) throws HuefyException {
+        try {
+<span class="pc bpc" id="L244" title="1 of 2 branches missed.">            String responseBody = response.body() != null ? response.body().string() : &quot;&quot;;</span>
+            
+<span class="fc bfc" id="L246" title="All 2 branches covered.">            if (response.isSuccessful()) {</span>
+<span class="fc" id="L247">                return objectMapper.readValue(responseBody, responseClass);</span>
+            } else {
+                // Parse error response
+                ErrorResponse errorResponse;
+                try {
+<span class="fc" id="L252">                    errorResponse = objectMapper.readValue(responseBody, ErrorResponse.class);</span>
+<span class="nc" id="L253">                } catch (JsonProcessingException e) {</span>
+                    // Fallback to generic error
+<span class="nc" id="L255">                    ErrorDetail errorDetail = new ErrorDetail(</span>
+<span class="nc" id="L256">                        &quot;HTTP_&quot; + response.code(),</span>
+<span class="nc bnc" id="L257" title="All 2 branches missed.">                        responseBody.isEmpty() ? &quot;HTTP &quot; + response.code() : responseBody,</span>
+                        null
+                    );
+<span class="nc" id="L260">                    errorResponse = new ErrorResponse(errorDetail);</span>
+<span class="fc" id="L261">                }</span>
+                
+<span class="fc" id="L263">                throw createExceptionFromErrorResponse(errorResponse, response.code());</span>
+            }
+<span class="fc" id="L265">        } catch (JsonProcessingException e) {</span>
+<span class="fc" id="L266">            throw new HuefyException(&quot;Failed to parse response&quot;, e);</span>
+<span class="nc" id="L267">        } catch (IOException e) {</span>
+<span class="nc" id="L268">            throw new NetworkException(&quot;Failed to read response body&quot;, e);</span>
+        }
+    }
+    
+    /**
+     * Creates appropriate exception types from error responses.
+     * 
+     * @param errorResponse the error response
+     * @param statusCode the HTTP status code
+     * @return the appropriate exception
+     */
+    private HuefyException createExceptionFromErrorResponse(ErrorResponse errorResponse, int statusCode) {
+<span class="fc" id="L280">        ErrorDetail error = errorResponse.getError();</span>
+<span class="fc" id="L281">        String code = error.getCode();</span>
+<span class="fc" id="L282">        String message = error.getMessage();</span>
+        
+<span class="pc bpc" id="L284" title="7 of 10 branches missed.">        switch (code) {</span>
+            case &quot;AUTHENTICATION_FAILED&quot;:
+<span class="fc" id="L286">                return new AuthenticationException(message);</span>
+            case &quot;TEMPLATE_NOT_FOUND&quot;:
+<span class="pc bpc" id="L288" title="1 of 2 branches missed.">                String templateKey = error.getDetails() != null ? </span>
+<span class="pc" id="L289">                    (String) error.getDetails().get(&quot;templateKey&quot;) : null;</span>
+<span class="fc" id="L290">                return new TemplateNotFoundException(message, templateKey);</span>
+            case &quot;INVALID_TEMPLATE_DATA&quot;:
+                @SuppressWarnings(&quot;unchecked&quot;)
+<span class="nc bnc" id="L293" title="All 2 branches missed.">                List&lt;String&gt; validationErrors = error.getDetails() != null ?</span>
+<span class="nc" id="L294">                    (List&lt;String&gt;) error.getDetails().get(&quot;validationErrors&quot;) : null;</span>
+<span class="nc" id="L295">                return new InvalidTemplateDataException(message, validationErrors);</span>
+            case &quot;INVALID_RECIPIENT&quot;:
+<span class="nc" id="L297">                return new InvalidRecipientException(message);</span>
+            case &quot;PROVIDER_ERROR&quot;:
+<span class="nc bnc" id="L299" title="All 2 branches missed.">                String provider = error.getDetails() != null ?</span>
+<span class="nc" id="L300">                    (String) error.getDetails().get(&quot;provider&quot;) : null;</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">                String providerCode = error.getDetails() != null ?</span>
+<span class="nc" id="L302">                    (String) error.getDetails().get(&quot;providerCode&quot;) : null;</span>
+<span class="nc" id="L303">                return new ProviderException(message, provider, providerCode);</span>
+            case &quot;RATE_LIMIT_EXCEEDED&quot;:
+<span class="pc bpc" id="L305" title="1 of 2 branches missed.">                Integer retryAfter = error.getDetails() != null ?</span>
+<span class="pc" id="L306">                    (Integer) error.getDetails().get(&quot;retryAfter&quot;) : null;</span>
+<span class="fc" id="L307">                return new RateLimitException(message, retryAfter);</span>
+            case &quot;VALIDATION_FAILED&quot;:
+<span class="nc" id="L309">                return new ValidationException(message);</span>
+            case &quot;TIMEOUT&quot;:
+<span class="nc" id="L311">                return new TimeoutException(message);</span>
+            case &quot;NETWORK_ERROR&quot;:
+<span class="nc" id="L313">                return new NetworkException(message);</span>
+            default:
+<span class="nc" id="L315">                return new HuefyException(message);</span>
+        }
+    }
+    
+    /**
+     * Closes the HTTP client and releases resources.
+     * This method should be called when the client is no longer needed.
+     */
+    public void close() {
+<span class="pc bpc" id="L324" title="1 of 2 branches missed.">        if (httpClient != null) {</span>
+<span class="fc" id="L325">            httpClient.dispatcher().executorService().shutdown();</span>
+<span class="fc" id="L326">            httpClient.connectionPool().evictAll();</span>
+<span class="pc bpc" id="L327" title="1 of 2 branches missed.">            if (httpClient.cache() != null) {</span>
+                try {
+<span class="nc" id="L329">                    httpClient.cache().close();</span>
+<span class="nc" id="L330">                } catch (IOException e) {</span>
+<span class="nc" id="L331">                    logger.warn(&quot;Error closing HTTP cache&quot;, e);</span>
+<span class="nc" id="L332">                }</span>
+            }
+        }
+<span class="fc" id="L335">    }</span>
+    
+    /**
+     * Interceptor that adds the User-Agent header to all requests.
+     */
+    // Proxy protocol classes
+    private static class ProxyRequest {
+        public ProxyConfig config;
+        public String method;
+        public String endpoint;
+        public Object data;
+    }
+    
+    private static class ProxyConfig {
+        public String apiKey;
+        public int timeout;
+    }
+    
+    private static class ProxyResponse {
+        public Object data;
+        public ProxyError error;
+        public boolean success;
+    }
+    
+    private static class ProxyError {
+        public String code;
+        public String message;
+    }
+    
+    private static class UserAgentInterceptor implements Interceptor {
+        @Override
+        public Response intercept(Chain chain) throws IOException {
+<span class="fc" id="L367">            Request request = chain.request().newBuilder()</span>
+<span class="fc" id="L368">                .header(&quot;User-Agent&quot;, USER_AGENT)</span>
+<span class="fc" id="L369">                .build();</span>
+<span class="fc" id="L370">            return chain.proceed(request);</span>
+        }
+    }
+    
+    /**
+     * Interceptor that adds authentication headers to all requests.
+     */
+    private static class AuthenticationInterceptor implements Interceptor {
+        private final String apiKey;
+        
+<span class="fc" id="L380">        public AuthenticationInterceptor(String apiKey) {</span>
+<span class="fc" id="L381">            this.apiKey = apiKey;</span>
+<span class="fc" id="L382">        }</span>
+        
+        @Override
+        public Response intercept(Chain chain) throws IOException {
+<span class="fc" id="L386">            Request request = chain.request().newBuilder()</span>
+<span class="fc" id="L387">                .header(&quot;X-API-Key&quot;, apiKey)</span>
+<span class="fc" id="L388">                .build();</span>
+<span class="fc" id="L389">            return chain.proceed(request);</span>
+        }
+    }
+    
+    /**
+     * Interceptor that handles automatic retries for failed requests.
+     */
+    private static class RetryInterceptor implements Interceptor {
+<span class="nc" id="L397">        private static final Logger logger = LoggerFactory.getLogger(RetryInterceptor.class);</span>
+        private final RetryConfig retryConfig;
+        
+<span class="nc" id="L400">        public RetryInterceptor(RetryConfig retryConfig) {</span>
+<span class="nc" id="L401">            this.retryConfig = retryConfig;</span>
+<span class="nc" id="L402">        }</span>
+        
+        @Override
+        public Response intercept(Chain chain) throws IOException {
+<span class="nc" id="L406">            Request request = chain.request();</span>
+<span class="nc" id="L407">            Response response = null;</span>
+<span class="nc" id="L408">            IOException lastException = null;</span>
+            
+<span class="nc bnc" id="L410" title="All 2 branches missed.">            for (int attempt = 0; attempt &lt;= retryConfig.getMaxRetries(); attempt++) {</span>
+<span class="nc bnc" id="L411" title="All 2 branches missed.">                if (attempt &gt; 0) {</span>
+<span class="nc" id="L412">                    long delay = calculateDelay(attempt - 1);</span>
+<span class="nc" id="L413">                    logger.debug(&quot;Retrying request after {}ms (attempt {})&quot;, delay, attempt);</span>
+                    
+                    try {
+<span class="nc" id="L416">                        Thread.sleep(delay);</span>
+<span class="nc" id="L417">                    } catch (InterruptedException e) {</span>
+<span class="nc" id="L418">                        Thread.currentThread().interrupt();</span>
+<span class="nc" id="L419">                        throw new IOException(&quot;Request interrupted&quot;, e);</span>
+<span class="nc" id="L420">                    }</span>
+                }
+                
+                try {
+<span class="nc bnc" id="L424" title="All 2 branches missed.">                    if (response != null) {</span>
+<span class="nc" id="L425">                        response.close();</span>
+                    }
+<span class="nc" id="L427">                    response = chain.proceed(request);</span>
+                    
+<span class="nc bnc" id="L429" title="All 4 branches missed.">                    if (response.isSuccessful() || !isRetryableStatus(response.code())) {</span>
+<span class="nc" id="L430">                        return response;</span>
+                    }
+                    
+<span class="nc" id="L433">                    logger.debug(&quot;Request failed with status {} (attempt {})&quot;, response.code(), attempt + 1);</span>
+<span class="nc" id="L434">                } catch (IOException e) {</span>
+<span class="nc" id="L435">                    lastException = e;</span>
+<span class="nc" id="L436">                    logger.debug(&quot;Request failed with exception (attempt {}): {}&quot;, attempt + 1, e.getMessage());</span>
+                    
+<span class="nc bnc" id="L438" title="All 2 branches missed.">                    if (attempt == retryConfig.getMaxRetries()) {</span>
+<span class="nc" id="L439">                        throw e;</span>
+                    }
+<span class="nc" id="L441">                }</span>
+            }
+            
+<span class="nc bnc" id="L444" title="All 2 branches missed.">            if (response != null) {</span>
+<span class="nc" id="L445">                return response;</span>
+<span class="nc bnc" id="L446" title="All 2 branches missed.">            } else if (lastException != null) {</span>
+<span class="nc" id="L447">                throw lastException;</span>
+            } else {
+<span class="nc" id="L449">                throw new IOException(&quot;Request failed after &quot; + (retryConfig.getMaxRetries() + 1) + &quot; attempts&quot;);</span>
+            }
+        }
+        
+        private long calculateDelay(int attemptNumber) {
+<span class="nc" id="L454">            long delay = (long) (retryConfig.getBaseDelay().toMillis() * Math.pow(retryConfig.getMultiplier(), attemptNumber));</span>
+<span class="nc" id="L455">            return Math.min(delay, retryConfig.getMaxDelay().toMillis());</span>
+        }
+        
+        private boolean isRetryableStatus(int statusCode) {
+<span class="nc bnc" id="L459" title="All 4 branches missed.">            return statusCode &gt;= 500 || statusCode == 429; // Server errors and rate limiting</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

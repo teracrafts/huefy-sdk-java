@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HealthResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Huefy Java SDK</a> &gt; <a href="index.source.html" class="el_package">com.teracrafts.huefy.models</a> &gt; <span class="el_source">HealthResponse.java</span></div><h1>HealthResponse.java</h1><pre class="source lang-java linenums">package com.teracrafts.huefy.models;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.time.Instant;
+
+/**
+ * Response object for API health check operations.
+ * 
+ * &lt;p&gt;This class represents the response from the Huefy API health check endpoint.
+ * It provides information about the current status and health of the API service.&lt;/p&gt;
+ * 
+ * @author Huefy Team
+ * @since 1.0.0
+ */
+public class HealthResponse {
+    @JsonProperty(&quot;status&quot;)
+    private String status;
+    
+    @JsonProperty(&quot;timestamp&quot;)
+    private Instant timestamp;
+    
+    @JsonProperty(&quot;version&quot;)
+    private String version;
+    
+    /**
+     * Default constructor for JSON deserialization.
+     */
+<span class="fc" id="L29">    public HealthResponse() {</span>
+<span class="fc" id="L30">    }</span>
+    
+    /**
+     * Creates a new HealthResponse.
+     * 
+     * @param status the health status
+     * @param timestamp the timestamp of the health check
+     * @param version the API version
+     */
+<span class="fc" id="L39">    public HealthResponse(String status, Instant timestamp, String version) {</span>
+<span class="fc" id="L40">        this.status = status;</span>
+<span class="fc" id="L41">        this.timestamp = timestamp;</span>
+<span class="fc" id="L42">        this.version = version;</span>
+<span class="fc" id="L43">    }</span>
+    
+    /**
+     * Returns the health status of the API.
+     * 
+     * @return the health status (e.g., &quot;healthy&quot;, &quot;degraded&quot;, &quot;unhealthy&quot;)
+     */
+    public String getStatus() {
+<span class="fc" id="L51">        return status;</span>
+    }
+    
+    /**
+     * Sets the health status.
+     * 
+     * @param status the health status
+     */
+    public void setStatus(String status) {
+<span class="fc" id="L60">        this.status = status;</span>
+<span class="fc" id="L61">    }</span>
+    
+    /**
+     * Returns the timestamp when the health check was performed.
+     * 
+     * @return the timestamp
+     */
+    public Instant getTimestamp() {
+<span class="fc" id="L69">        return timestamp;</span>
+    }
+    
+    /**
+     * Sets the timestamp.
+     * 
+     * @param timestamp the timestamp
+     */
+    public void setTimestamp(Instant timestamp) {
+<span class="fc" id="L78">        this.timestamp = timestamp;</span>
+<span class="fc" id="L79">    }</span>
+    
+    /**
+     * Returns the API version.
+     * 
+     * @return the API version, or null if not provided
+     */
+    public String getVersion() {
+<span class="fc" id="L87">        return version;</span>
+    }
+    
+    /**
+     * Sets the API version.
+     * 
+     * @param version the API version
+     */
+    public void setVersion(String version) {
+<span class="fc" id="L96">        this.version = version;</span>
+<span class="fc" id="L97">    }</span>
+    
+    @Override
+    public String toString() {
+<span class="nc" id="L101">        return &quot;HealthResponse{&quot; +</span>
+                &quot;status='&quot; + status + '\'' +
+                &quot;, timestamp=&quot; + timestamp +
+                &quot;, version='&quot; + version + '\'' +
+                '}';
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

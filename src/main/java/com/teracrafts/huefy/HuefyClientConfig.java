@@ -11,7 +11,7 @@ import java.time.Duration;
  * <p>Example usage:</p>
  * <pre>{@code
  * HuefyClientConfig config = HuefyClientConfig.builder()
- *     .baseUrl("https://api.huefy.com")
+ *     .baseUrl("https://api.huefy.dev")
  *     .connectTimeout(Duration.ofSeconds(10))
  *     .readTimeout(Duration.ofSeconds(30))
  *     .retryConfig(RetryConfig.builder()
@@ -27,6 +27,7 @@ import java.time.Duration;
  * @since 1.0.0
  */
 public class HuefyClientConfig {
+    private final String proxyUrl;
     private final String baseUrl;
     private final Duration connectTimeout;
     private final Duration readTimeout;
@@ -34,11 +35,21 @@ public class HuefyClientConfig {
     private final RetryConfig retryConfig;
     
     private HuefyClientConfig(Builder builder) {
+        this.proxyUrl = builder.proxyUrl;
         this.baseUrl = builder.baseUrl;
         this.connectTimeout = builder.connectTimeout;
         this.readTimeout = builder.readTimeout;
         this.writeTimeout = builder.writeTimeout;
         this.retryConfig = builder.retryConfig;
+    }
+    
+    /**
+     * Returns the proxy URL for optimized routing.
+     * 
+     * @return the proxy URL, or null if not configured
+     */
+    public String getProxyUrl() {
+        return proxyUrl;
     }
     
     /**
@@ -99,11 +110,23 @@ public class HuefyClientConfig {
      * Builder class for creating HuefyClientConfig instances.
      */
     public static class Builder {
-        private String baseUrl = "https://api.huefy.com";
+        private String proxyUrl = "http://localhost:8080/kernel-proxy";
+        private String baseUrl = "https://api.huefy.dev";
         private Duration connectTimeout = Duration.ofSeconds(10);
         private Duration readTimeout = Duration.ofSeconds(30);
         private Duration writeTimeout = Duration.ofSeconds(30);
         private RetryConfig retryConfig = RetryConfig.builder().build();
+        
+        /**
+         * Sets the proxy URL for optimized routing.
+         * 
+         * @param proxyUrl the proxy URL
+         * @return this builder
+         */
+        public Builder proxyUrl(String proxyUrl) {
+            this.proxyUrl = proxyUrl;
+            return this;
+        }
         
         /**
          * Sets the base URL for the Huefy API.

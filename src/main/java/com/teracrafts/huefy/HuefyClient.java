@@ -41,11 +41,12 @@ import java.util.concurrent.TimeUnit;
 public class HuefyClient {
     private static final Logger logger = LoggerFactory.getLogger(HuefyClient.class);
     
-    private static final String DEFAULT_BASE_URL = "https://api.huefy.com";
+    private static final String DEFAULT_BASE_URL = "https://api.huefy.dev";
     private static final String USER_AGENT = "Huefy-Java-SDK/1.0.0";
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     
     private final String apiKey;
+    private final String proxyUrl;
     private final String baseUrl;
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -74,6 +75,7 @@ public class HuefyClient {
         }
         
         this.apiKey = apiKey.trim();
+        this.proxyUrl = config.getProxyUrl();
         this.baseUrl = config.getBaseUrl() != null ? config.getBaseUrl() : DEFAULT_BASE_URL;
         this.retryConfig = config.getRetryConfig();
         
@@ -112,24 +114,7 @@ public class HuefyClient {
         }
         
         request.validate();
-        
-        try {
-            String jsonBody = objectMapper.writeValueAsString(request);
-            RequestBody body = RequestBody.create(jsonBody, JSON);
-            
-            Request httpRequest = new Request.Builder()
-                .url(baseUrl + "/api/v1/sdk/emails/send")
-                .post(body)
-                .build();
-            
-            try (Response response = httpClient.newCall(httpRequest).execute()) {
-                return handleResponse(response, SendEmailResponse.class);
-            }
-        } catch (JsonProcessingException e) {
-            throw new HuefyException("Failed to serialize request", e);
-        } catch (IOException e) {
-            throw new NetworkException("Network error occurred", e);
-        }
+        return makeRequest("POST", "/emails/send", request, SendEmailResponse.class);
     }
     
     /**
@@ -155,24 +140,7 @@ public class HuefyClient {
         }
         
         BulkEmailRequest bulkRequest = new BulkEmailRequest(requests);
-        
-        try {
-            String jsonBody = objectMapper.writeValueAsString(bulkRequest);
-            RequestBody body = RequestBody.create(jsonBody, JSON);
-            
-            Request httpRequest = new Request.Builder()
-                .url(baseUrl + "/api/v1/sdk/emails/bulk")
-                .post(body)
-                .build();
-            
-            try (Response response = httpClient.newCall(httpRequest).execute()) {
-                return handleResponse(response, BulkEmailResponse.class);
-            }
-        } catch (JsonProcessingException e) {
-            throw new HuefyException("Failed to serialize request", e);
-        } catch (IOException e) {
-            throw new NetworkException("Network error occurred", e);
-        }
+        return makeRequest("POST", "/emails/bulk", bulkRequest, BulkEmailResponse.class);
     }
     
     /**
@@ -182,16 +150,7 @@ public class HuefyClient {
      * @throws HuefyException if the request fails
      */
     public HealthResponse healthCheck() throws HuefyException {
-        Request request = new Request.Builder()
-            .url(baseUrl + "/api/v1/sdk/health")
-            .get()
-            .build();
-        
-        try (Response response = httpClient.newCall(request).execute()) {
-            return handleResponse(response, HealthResponse.class);
-        } catch (IOException e) {
-            throw new NetworkException("Network error occurred", e);
-        }
+        return makeRequest("GET", "/health", null, HealthResponse.class);
     }
     
     /**
@@ -203,6 +162,83 @@ public class HuefyClient {
      * @return the deserialized response object
      * @throws HuefyException if the response indicates an error
      */
+    /**
+     * Makes an HTTP request using proxy or direct API based on configuration.
+     */
+    private <T> T makeRequest(String method, String endpoint, Object data, Class<T> responseClass) throws HuefyException {
+        try {
+            String requestUrl;
+            Object requestData;
+            
+            // Use proxy if configured, otherwise direct API
+            if (proxyUrl != null && !proxyUrl.isEmpty()) {
+                requestUrl = proxyUrl;
+                // Create proxy request with configuration
+                ProxyRequest proxyRequest = new ProxyRequest();
+                proxyRequest.config = new ProxyConfig();
+                proxyRequest.config.apiKey = this.apiKey;
+                proxyRequest.config.timeout = (int) (retryConfig.getBaseDelay().toMillis() * retryConfig.getMaxRetries());
+                proxyRequest.method = method;
+                proxyRequest.endpoint = endpoint;
+                proxyRequest.data = data;
+                requestData = proxyRequest;
+                method = "POST"; // Always POST to proxy
+            } else {
+                // Ensure no double slashes
+                String cleanBaseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+                requestUrl = cleanBaseUrl + "/api/v1/sdk" + endpoint;
+                requestData = data;
+            }
+            
+            String jsonBody = objectMapper.writeValueAsString(requestData);
+            RequestBody body = RequestBody.create(jsonBody, JSON);
+            
+            Request.Builder requestBuilder = new Request.Builder().url(requestUrl);
+            
+            if ("POST".equals(method)) {
+                requestBuilder.post(body);
+            } else if ("GET".equals(method)) {
+                requestBuilder.get();
+            }
+            
+            Request httpRequest = requestBuilder.build();
+            
+            try (Response response = httpClient.newCall(httpRequest).execute()) {
+                if (proxyUrl != null && !proxyUrl.isEmpty()) {
+                    return handleProxyResponse(response, responseClass);
+                } else {
+                    return handleResponse(response, responseClass);
+                }
+            }
+        } catch (JsonProcessingException e) {
+            throw new HuefyException("Failed to serialize request", e);
+        } catch (IOException e) {
+            throw new NetworkException("Network error occurred", e);
+        }
+    }
+    
+    /**
+     * Handles proxy response format.
+     */
+    private <T> T handleProxyResponse(Response response, Class<T> responseClass) throws HuefyException {
+        try {
+            String responseBody = response.body().string();
+            ProxyResponse proxyResponse = objectMapper.readValue(responseBody, ProxyResponse.class);
+            
+            if (!proxyResponse.success) {
+                ProxyError error = proxyResponse.error;
+                throw new HuefyException(
+                    error != null ? error.message : "Unknown proxy error",
+                    error != null ? new RuntimeException(error.code) : null
+                );
+            }
+            
+            return objectMapper.convertValue(proxyResponse.data, responseClass);
+        } catch (IOException e) {
+            throw new NetworkException("Failed to read proxy response", e);
+        }
+    }
+    
     private <T> T handleResponse(Response response, Class<T> responseClass) throws HuefyException {
         try {
             String responseBody = response.body() != null ? response.body().string() : "";
@@ -301,6 +337,30 @@ public class HuefyClient {
     /**
      * Interceptor that adds the User-Agent header to all requests.
      */
+    // Proxy protocol classes
+    private static class ProxyRequest {
+        public ProxyConfig config;
+        public String method;
+        public String endpoint;
+        public Object data;
+    }
+    
+    private static class ProxyConfig {
+        public String apiKey;
+        public int timeout;
+    }
+    
+    private static class ProxyResponse {
+        public Object data;
+        public ProxyError error;
+        public boolean success;
+    }
+    
+    private static class ProxyError {
+        public String code;
+        public String message;
+    }
+    
     private static class UserAgentInterceptor implements Interceptor {
         @Override
         public Response intercept(Chain chain) throws IOException {

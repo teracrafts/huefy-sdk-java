@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BulkEmailResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Huefy Java SDK</a> &gt; <a href="index.source.html" class="el_package">com.teracrafts.huefy.models</a> &gt; <span class="el_source">BulkEmailResponse.java</span></div><h1>BulkEmailResponse.java</h1><pre class="source lang-java linenums">package com.teracrafts.huefy.models;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.List;
+
+/**
+ * Response object for bulk email operations.
+ * 
+ * &lt;p&gt;This class represents the response from the Huefy API when multiple emails
+ * are sent in a single bulk operation. It contains a list of results for each
+ * email that was processed.&lt;/p&gt;
+ * 
+ * @author Huefy Team
+ * @since 1.0.0
+ */
+public class BulkEmailResponse {
+    @JsonProperty(&quot;results&quot;)
+    private List&lt;BulkEmailResult&gt; results;
+    
+    /**
+     * Default constructor for JSON deserialization.
+     */
+<span class="fc" id="L24">    public BulkEmailResponse() {</span>
+<span class="fc" id="L25">    }</span>
+    
+    /**
+     * Creates a new BulkEmailResponse with the specified results.
+     * 
+     * @param results the list of email results
+     */
+<span class="fc" id="L32">    public BulkEmailResponse(List&lt;BulkEmailResult&gt; results) {</span>
+<span class="fc" id="L33">        this.results = results;</span>
+<span class="fc" id="L34">    }</span>
+    
+    /**
+     * Returns the list of email results.
+     * 
+     * @return the email results
+     */
+    public List&lt;BulkEmailResult&gt; getResults() {
+<span class="fc" id="L42">        return results;</span>
+    }
+    
+    /**
+     * Sets the list of email results.
+     * 
+     * @param results the email results
+     */
+    public void setResults(List&lt;BulkEmailResult&gt; results) {
+<span class="fc" id="L51">        this.results = results;</span>
+<span class="fc" id="L52">    }</span>
+    
+    /**
+     * Represents the result of a single email in a bulk operation.
+     */
+    public static class BulkEmailResult {
+        @JsonProperty(&quot;success&quot;)
+        private boolean success;
+        
+        @JsonProperty(&quot;result&quot;)
+        private SendEmailResponse result;
+        
+        @JsonProperty(&quot;error&quot;)
+        private ErrorResponse error;
+        
+        /**
+         * Default constructor for JSON deserialization.
+         */
+<span class="fc" id="L70">        public BulkEmailResult() {</span>
+<span class="fc" id="L71">        }</span>
+        
+        /**
+         * Creates a successful result.
+         * 
+         * @param result the email response
+         */
+<span class="fc" id="L78">        public BulkEmailResult(SendEmailResponse result) {</span>
+<span class="fc" id="L79">            this.success = true;</span>
+<span class="fc" id="L80">            this.result = result;</span>
+<span class="fc" id="L81">        }</span>
+        
+        /**
+         * Creates a failed result.
+         * 
+         * @param error the error response
+         */
+<span class="nc" id="L88">        public BulkEmailResult(ErrorResponse error) {</span>
+<span class="nc" id="L89">            this.success = false;</span>
+<span class="nc" id="L90">            this.error = error;</span>
+<span class="nc" id="L91">        }</span>
+        
+        /**
+         * Returns whether the email was sent successfully.
+         * 
+         * @return true if successful, false otherwise
+         */
+        public boolean isSuccess() {
+<span class="fc" id="L99">            return success;</span>
+        }
+        
+        /**
+         * Sets the success status.
+         * 
+         * @param success the success status
+         */
+        public void setSuccess(boolean success) {
+<span class="fc" id="L108">            this.success = success;</span>
+<span class="fc" id="L109">        }</span>
+        
+        /**
+         * Returns the email response for successful sends.
+         * 
+         * @return the email response, or null if the send failed
+         */
+        public SendEmailResponse getResult() {
+<span class="fc" id="L117">            return result;</span>
+        }
+        
+        /**
+         * Sets the email response.
+         * 
+         * @param result the email response
+         */
+        public void setResult(SendEmailResponse result) {
+<span class="fc" id="L126">            this.result = result;</span>
+<span class="fc" id="L127">        }</span>
+        
+        /**
+         * Returns the error response for failed sends.
+         * 
+         * @return the error response, or null if the send was successful
+         */
+        public ErrorResponse getError() {
+<span class="fc" id="L135">            return error;</span>
+        }
+        
+        /**
+         * Sets the error response.
+         * 
+         * @param error the error response
+         */
+        public void setError(ErrorResponse error) {
+<span class="fc" id="L144">            this.error = error;</span>
+<span class="fc" id="L145">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

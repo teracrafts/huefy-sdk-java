@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ErrorResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Huefy Java SDK</a> &gt; <a href="index.source.html" class="el_package">com.teracrafts.huefy.models</a> &gt; <span class="el_source">ErrorResponse.java</span></div><h1>ErrorResponse.java</h1><pre class="source lang-java linenums">package com.teracrafts.huefy.models;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.Map;
+
+/**
+ * Response object for API error responses.
+ * 
+ * &lt;p&gt;This class represents an error response from the Huefy API.
+ * It contains detailed information about what went wrong, including
+ * error codes, messages, and additional details.&lt;/p&gt;
+ * 
+ * @author Huefy Team
+ * @since 1.0.0
+ */
+public class ErrorResponse {
+    @JsonProperty(&quot;error&quot;)
+    private ErrorDetail error;
+    
+    /**
+     * Default constructor for JSON deserialization.
+     */
+<span class="fc" id="L24">    public ErrorResponse() {</span>
+<span class="fc" id="L25">    }</span>
+    
+    /**
+     * Creates a new ErrorResponse with the specified error detail.
+     * 
+     * @param error the error detail
+     */
+<span class="fc" id="L32">    public ErrorResponse(ErrorDetail error) {</span>
+<span class="fc" id="L33">        this.error = error;</span>
+<span class="fc" id="L34">    }</span>
+    
+    /**
+     * Returns the error detail.
+     * 
+     * @return the error detail
+     */
+    public ErrorDetail getError() {
+<span class="fc" id="L42">        return error;</span>
+    }
+    
+    /**
+     * Sets the error detail.
+     * 
+     * @param error the error detail
+     */
+    public void setError(ErrorDetail error) {
+<span class="fc" id="L51">        this.error = error;</span>
+<span class="fc" id="L52">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -80,7 +80,6 @@ HuefyClient client = new HuefyClient("your-api-key");
 import java.time.Duration;
 
 HuefyClientConfig config = HuefyClientConfig.builder()
-    .baseUrl("https://api.huefy.com")
     .connectTimeout(Duration.ofSeconds(10))
     .readTimeout(Duration.ofSeconds(30))
     .retryConfig(RetryConfig.builder()
