@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"com.teracrafts.huefy"},{"l":"com.teracrafts.huefy.exceptions"},{"l":"com.teracrafts.huefy.models"}];updateSearchResults();

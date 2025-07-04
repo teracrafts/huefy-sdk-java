@@ -10,9 +10,9 @@ Add the following dependency to your `pom.xml`:
 
 ```xml
 <dependency>
-    <groupId>com.huefy</groupId>
-    <artifactId>huefy-java-sdk</artifactId>
-    <version>1.0.0</version>
+    <groupId>com.teracrafts</groupId>
+    <artifactId>huefy-sdk-java</artifactId>
+    <version>1.0.1</version>
 </dependency>
 ```
 
@@ -21,7 +21,7 @@ Add the following dependency to your `pom.xml`:
 Add the following to your `build.gradle`:
 
 ```groovy
-implementation 'com.huefy:huefy-java-sdk:1.0.0'
+implementation 'com.teracrafts:huefy-sdk-java:1.0.1'
 ```
 
 ## Quick Start
