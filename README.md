@@ -313,6 +313,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 For support and questions:
 
-- 📧 Email: support@huefy.com
-- 📖 Documentation: https://docs.huefy.com
+- 📧 Email: support@huefy.dev
+- 📖 Documentation: https://docs.huefy.dev
 - 🐛 Issues: https://github.com/huefy/huefy-sdk/issues
