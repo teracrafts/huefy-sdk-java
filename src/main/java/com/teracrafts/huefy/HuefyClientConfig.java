@@ -27,38 +27,45 @@ import java.time.Duration;
  * @since 1.0.0
  */
 public class HuefyClientConfig {
-    private final String proxyUrl;
+    // Production and local endpoints
+    public static final String PRODUCTION_HTTP_ENDPOINT = "https://api.huefy.dev/api/v1/sdk";
+    public static final String LOCAL_HTTP_ENDPOINT = "http://localhost:8080/api/v1/sdk";
+
     private final String baseUrl;
     private final Duration connectTimeout;
     private final Duration readTimeout;
     private final Duration writeTimeout;
     private final RetryConfig retryConfig;
-    
+    private final boolean local;
+
     private HuefyClientConfig(Builder builder) {
-        this.proxyUrl = builder.proxyUrl;
         this.baseUrl = builder.baseUrl;
         this.connectTimeout = builder.connectTimeout;
         this.readTimeout = builder.readTimeout;
         this.writeTimeout = builder.writeTimeout;
         this.retryConfig = builder.retryConfig;
+        this.local = builder.local;
     }
-    
+
     /**
-     * Returns the proxy URL for optimized routing.
-     * 
-     * @return the proxy URL, or null if not configured
+     * Returns the HTTP endpoint based on configuration.
+     *
+     * @return the HTTP endpoint URL
      */
-    public String getProxyUrl() {
-        return proxyUrl;
+    public String getHttpEndpoint() {
+        if (baseUrl != null && !baseUrl.isEmpty()) {
+            return baseUrl;
+        }
+        return local ? LOCAL_HTTP_ENDPOINT : PRODUCTION_HTTP_ENDPOINT;
     }
-    
+
     /**
-     * Returns the base URL for the Huefy API.
-     * 
-     * @return the base URL
+     * Returns whether local development endpoints are being used.
+     *
+     * @return true if using local endpoints
      */
-    public String getBaseUrl() {
-        return baseUrl;
+    public boolean isLocal() {
+        return local;
     }
     
     /**
@@ -110,32 +117,32 @@ public class HuefyClientConfig {
      * Builder class for creating HuefyClientConfig instances.
      */
     public static class Builder {
-        private String proxyUrl = "http://localhost:8080/kernel-proxy";
-        private String baseUrl = "https://api.huefy.dev";
+        private String baseUrl = null;
         private Duration connectTimeout = Duration.ofSeconds(10);
         private Duration readTimeout = Duration.ofSeconds(30);
         private Duration writeTimeout = Duration.ofSeconds(30);
         private RetryConfig retryConfig = RetryConfig.builder().build();
-        
+        private boolean local = false;
+
         /**
-         * Sets the proxy URL for optimized routing.
-         * 
-         * @param proxyUrl the proxy URL
-         * @return this builder
-         */
-        public Builder proxyUrl(String proxyUrl) {
-            this.proxyUrl = proxyUrl;
-            return this;
-        }
-        
-        /**
-         * Sets the base URL for the Huefy API.
-         * 
+         * Sets a custom base URL (overrides local setting).
+         *
          * @param baseUrl the base URL
          * @return this builder
          */
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
+            return this;
+        }
+
+        /**
+         * Sets whether to use local development endpoints.
+         *
+         * @param local true to use local endpoints
+         * @return this builder
+         */
+        public Builder local(boolean local) {
+            this.local = local;
             return this;
         }
         

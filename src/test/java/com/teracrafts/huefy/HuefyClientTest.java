@@ -37,7 +37,6 @@ class HuefyClientTest {
         String baseUrl = mockWebServer.url("/").toString();
         HuefyClientConfig config = HuefyClientConfig.builder()
             .baseUrl(baseUrl)
-            .proxyUrl(null) // Disable proxy for direct API tests
             .connectTimeout(Duration.ofSeconds(5))
             .readTimeout(Duration.ofSeconds(5))
             .retryConfig(RetryConfig.builder().enabled(false).build()) // Disable retries for tests
