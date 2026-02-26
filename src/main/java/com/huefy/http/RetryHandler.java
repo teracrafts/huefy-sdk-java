@@ -101,13 +101,13 @@ public class RetryHandler {
             return Math.min(retryAfter, maxDelay);
         }
 
-        // Exponential backoff: baseDelay * 2^attempt
-        long exponentialDelay = baseDelay * (1L << attempt);
+        // Exponential backoff: baseDelay * 2^attempt (capped shift to prevent overflow)
+        long exponentialDelay = baseDelay * (1L << Math.min(attempt, 30));
         long cappedDelay = Math.min(exponentialDelay, maxDelay);
 
-        // Add jitter: random value between 0 and cappedDelay
-        long jitter = ThreadLocalRandom.current().nextLong(0, Math.max(1, cappedDelay / 2));
-        return cappedDelay + jitter;
+        // Multiplicative jitter: random factor between 0.75 and 1.25 (±25% to match TypeScript canonical)
+        double jitterFactor = 0.75 + ThreadLocalRandom.current().nextDouble() * 0.5;
+        return (long)(cappedDelay * jitterFactor);
     }
 
     /**
