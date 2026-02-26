@@ -39,7 +39,7 @@ public class HuefyClient implements AutoCloseable {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private final HuefyConfig config;
-    private final HttpClient httpClient;
+    protected final HttpClient httpClient;
     private volatile boolean closed = false;
 
     /**
