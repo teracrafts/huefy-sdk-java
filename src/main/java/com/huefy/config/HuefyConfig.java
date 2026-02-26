@@ -1,5 +1,8 @@
 package com.huefy.config;
 
+import com.huefy.utils.Logger;
+import com.huefy.utils.NoopLogger;
+
 import java.util.Objects;
 
 /**
@@ -29,6 +32,7 @@ public final class HuefyConfig {
     private final String secondaryApiKey;
     private final boolean enableRequestSigning;
     private final boolean enableErrorSanitization;
+    private final Logger logger;
 
     private HuefyConfig(Builder builder) {
         this.apiKey = Objects.requireNonNull(builder.apiKey, "API key must not be null");
@@ -43,6 +47,7 @@ public final class HuefyConfig {
         this.secondaryApiKey = builder.secondaryApiKey;
         this.enableRequestSigning = builder.enableRequestSigning;
         this.enableErrorSanitization = builder.enableErrorSanitization;
+        this.logger = builder.logger != null ? builder.logger : new NoopLogger();
     }
 
     /**
@@ -86,9 +91,13 @@ public final class HuefyConfig {
         return enableErrorSanitization;
     }
 
+    public Logger getLogger() {
+        return logger;
+    }
+
     private static String resolveBaseUrl() {
         String mode = System.getenv("HUEFY_MODE");
-        if ("development".equalsIgnoreCase(mode) || "local".equalsIgnoreCase(mode)) {
+        if ("local".equalsIgnoreCase(mode)) {
             return LOCAL_BASE_URL;
         }
         return DEFAULT_BASE_URL;
@@ -121,8 +130,8 @@ public final class HuefyConfig {
             if (maxRetries < 0) {
                 throw new IllegalArgumentException("maxRetries must be >= 0");
             }
-            if (baseDelay < 0) {
-                throw new IllegalArgumentException("baseDelay must be >= 0");
+            if (baseDelay <= 0) {
+                throw new IllegalArgumentException("baseDelay must be positive");
             }
             if (maxDelay < baseDelay) {
                 throw new IllegalArgumentException("maxDelay must be >= baseDelay");
@@ -152,12 +161,13 @@ public final class HuefyConfig {
 
         private final int failureThreshold;
         private final long resetTimeout;
+        private final int halfOpenRequests;
 
         /**
          * Creates a circuit breaker config with default values.
          */
         public CircuitBreakerConfig() {
-            this(5, 30000);
+            this(5, 30000, 1);
         }
 
         /**
@@ -167,14 +177,29 @@ public final class HuefyConfig {
          * @param resetTimeout     time in milliseconds before attempting to close the circuit
          */
         public CircuitBreakerConfig(int failureThreshold, long resetTimeout) {
+            this(failureThreshold, resetTimeout, 1);
+        }
+
+        /**
+         * Creates a circuit breaker config with the specified values.
+         *
+         * @param failureThreshold number of failures before opening the circuit
+         * @param resetTimeout     time in milliseconds before attempting to close the circuit
+         * @param halfOpenRequests  maximum requests allowed in half-open state
+         */
+        public CircuitBreakerConfig(int failureThreshold, long resetTimeout, int halfOpenRequests) {
             if (failureThreshold < 1) {
                 throw new IllegalArgumentException("failureThreshold must be >= 1");
             }
-            if (resetTimeout < 0) {
-                throw new IllegalArgumentException("resetTimeout must be >= 0");
+            if (resetTimeout <= 0) {
+                throw new IllegalArgumentException("resetTimeout must be positive");
+            }
+            if (halfOpenRequests <= 0) {
+                throw new IllegalArgumentException("halfOpenRequests must be positive");
             }
             this.failureThreshold = failureThreshold;
             this.resetTimeout = resetTimeout;
+            this.halfOpenRequests = halfOpenRequests;
         }
 
         public int getFailureThreshold() {
@@ -183,6 +208,10 @@ public final class HuefyConfig {
 
         public long getResetTimeout() {
             return resetTimeout;
+        }
+
+        public int getHalfOpenRequests() {
+            return halfOpenRequests;
         }
     }
 
@@ -199,6 +228,7 @@ public final class HuefyConfig {
         private String secondaryApiKey;
         private boolean enableRequestSigning = false;
         private boolean enableErrorSanitization = true;
+        private Logger logger;
 
         private Builder() {}
 
@@ -242,6 +272,11 @@ public final class HuefyConfig {
 
         public Builder enableErrorSanitization(boolean enableErrorSanitization) {
             this.enableErrorSanitization = enableErrorSanitization;
+            return this;
+        }
+
+        public Builder logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 
