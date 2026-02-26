@@ -1,6 +1,9 @@
 package com.huefy.errors;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Exception class for the Huefy SDK.
@@ -112,12 +115,31 @@ public class HuefyException extends RuntimeException {
      * @return a new HuefyException
      */
     public static HuefyException fromResponse(int statusCode, String responseBody, String requestId) {
+        return fromResponse(statusCode, responseBody, requestId, null);
+    }
+
+    /**
+     * Creates an exception from an HTTP response with an optional Retry-After header value.
+     *
+     * @param statusCode       the HTTP status code
+     * @param responseBody     the response body
+     * @param requestId        the request ID (may be null)
+     * @param retryAfterHeader the value of the Retry-After HTTP header (may be null)
+     * @return a new HuefyException
+     */
+    public static HuefyException fromResponse(int statusCode, String responseBody,
+                                               String requestId, String retryAfterHeader) {
         ErrorCode errorCode = ErrorCode.fromHttpStatus(statusCode);
         boolean recoverable = isRecoverableStatus(statusCode);
         Long retryAfter = null;
 
         if (statusCode == 429) {
-            retryAfter = parseRetryAfter(responseBody);
+            // First try the Retry-After HTTP header
+            retryAfter = parseRetryAfterHeader(retryAfterHeader);
+            // Fall back to parsing from the response body
+            if (retryAfter == null) {
+                retryAfter = parseRetryAfter(responseBody);
+            }
         }
 
         String message = responseBody != null && !responseBody.isBlank()
@@ -184,8 +206,31 @@ public class HuefyException extends RuntimeException {
     }
 
     private static boolean isRecoverableStatus(int statusCode) {
-        return statusCode == 408 || statusCode == 429 || statusCode == 502
-                || statusCode == 503 || statusCode == 504;
+        return statusCode == 408 || statusCode == 429 || statusCode == 500
+                || statusCode == 502 || statusCode == 503 || statusCode == 504;
+    }
+
+    private static Long parseRetryAfterHeader(String headerValue) {
+        if (headerValue == null || headerValue.isBlank()) {
+            return null;
+        }
+        try {
+            // Retry-After header value is in seconds; convert to milliseconds
+            long seconds = Long.parseLong(headerValue.trim());
+            if (seconds > 0) {
+                return seconds * 1000;
+            }
+        } catch (NumberFormatException ignored) {
+            // Header may contain an HTTP-date; attempt to parse it
+            try {
+                ZonedDateTime date = ZonedDateTime.parse(headerValue.trim(), DateTimeFormatter.RFC_1123_DATE_TIME);
+                long diffMs = Duration.between(Instant.now(), date.toInstant()).toMillis();
+                return diffMs > 0 ? diffMs : null;
+            } catch (Exception alsoIgnored) {
+                return null;
+            }
+        }
+        return null;
     }
 
     private static Long parseRetryAfter(String responseBody) {
