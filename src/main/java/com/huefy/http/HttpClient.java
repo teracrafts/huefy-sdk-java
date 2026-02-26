@@ -14,7 +14,6 @@ import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Objects;
 
 /**
@@ -26,7 +25,7 @@ import java.util.Objects;
 public class HttpClient {
 
     private static final Logger logger = LoggerFactory.getLogger(HttpClient.class);
-    private static final String USER_AGENT = "huefy-sdk-java/" + Version.SDK_VERSION;
+    private static final String USER_AGENT = "huefy-java/" + Version.SDK_VERSION;
 
     private final HuefyConfig config;
     private final java.net.http.HttpClient httpClient;
@@ -95,12 +94,15 @@ public class HttpClient {
                 String requestId = response.headers()
                         .firstValue("X-Request-Id")
                         .orElse(null);
+                String retryAfterHeader = response.headers()
+                        .firstValue("Retry-After")
+                        .orElse(null);
 
                 if (config.isEnableErrorSanitization() && responseBody != null) {
                     responseBody = ErrorSanitizer.sanitize(responseBody);
                 }
 
-                throw HuefyException.fromResponse(statusCode, responseBody, requestId);
+                throw HuefyException.fromResponse(statusCode, responseBody, requestId, retryAfterHeader);
 
             } catch (HuefyException e) {
                 throw e;
@@ -148,7 +150,7 @@ public class HttpClient {
             throws Exception {
 
         String url = config.getBaseUrl() + path;
-        String timestamp = Instant.now().toString();
+        String timestamp = String.valueOf(System.currentTimeMillis());
 
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -160,17 +162,20 @@ public class HttpClient {
                 .header("X-SDK-Version", Version.SDK_VERSION)
                 .header("X-Timestamp", timestamp);
 
+        // Serialize body once for both signing and sending
+        String bodyString = body != null ? body : "";
+
         // Add HMAC signature if request signing is enabled
         if (config.isEnableRequestSigning()) {
-            String payload = body != null ? body : "";
-            String signature = Security.generateHmacSignature(payload, currentApiKey);
+            String message = timestamp + "." + bodyString;
+            String signature = Security.generateHmacSignature(message, currentApiKey);
             requestBuilder.header("X-Signature", signature);
             requestBuilder.header("X-Signature-Algorithm", "HMAC-SHA256");
         }
 
-        // Set method and body
+        // Set method and body using the same string used for signing
         HttpRequest.BodyPublisher bodyPublisher = body != null
-                ? HttpRequest.BodyPublishers.ofString(body)
+                ? HttpRequest.BodyPublishers.ofString(bodyString)
                 : HttpRequest.BodyPublishers.noBody();
 
         requestBuilder.method(method.toUpperCase(), bodyPublisher);
