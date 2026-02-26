@@ -34,10 +34,12 @@ public class CircuitBreaker {
         HALF_OPEN
     }
 
+    private final int halfOpenMaxRequests;
     private final int failureThreshold;
     private final long resetTimeout;
     private final AtomicReference<State> state;
     private final AtomicInteger failureCount;
+    private final AtomicInteger halfOpenAttempts;
     private volatile long lastFailureTime;
 
     /**
@@ -48,8 +50,10 @@ public class CircuitBreaker {
     public CircuitBreaker(HuefyConfig.CircuitBreakerConfig config) {
         this.failureThreshold = config.getFailureThreshold();
         this.resetTimeout = config.getResetTimeout();
+        this.halfOpenMaxRequests = config.getHalfOpenRequests();
         this.state = new AtomicReference<>(State.CLOSED);
         this.failureCount = new AtomicInteger(0);
+        this.halfOpenAttempts = new AtomicInteger(0);
         this.lastFailureTime = 0;
     }
 
@@ -58,15 +62,15 @@ public class CircuitBreaker {
      *
      * @return the current state
      */
-    public State getState() {
+    public synchronized State getState() {
         State current = state.get();
 
         // Check if we should transition from OPEN to HALF_OPEN
         if (current == State.OPEN && isResetTimeoutExpired()) {
-            if (state.compareAndSet(State.OPEN, State.HALF_OPEN)) {
-                logger.info("Circuit breaker transitioning from OPEN to HALF_OPEN");
-            }
-            return state.get();
+            state.set(State.HALF_OPEN);
+            halfOpenAttempts.set(0);
+            logger.info("Circuit breaker transitioning from OPEN to HALF_OPEN");
+            return State.HALF_OPEN;
         }
 
         return current;
@@ -78,7 +82,7 @@ public class CircuitBreaker {
      *
      * @throws HuefyException if the circuit is open
      */
-    public void ensureClosed() {
+    public synchronized void ensureClosed() {
         State current = getState();
         if (current == State.OPEN) {
             throw new HuefyException(
@@ -92,14 +96,30 @@ public class CircuitBreaker {
                     null
             );
         }
+        if (current == State.HALF_OPEN) {
+            int attempts = halfOpenAttempts.incrementAndGet();
+            if (attempts > halfOpenMaxRequests) {
+                throw new HuefyException(
+                        "Circuit breaker is half-open. Only " + halfOpenMaxRequests +
+                                " probe request(s) allowed",
+                        ErrorCode.CIRCUIT_OPEN,
+                        null,
+                        true,
+                        resetTimeout / 2,
+                        null,
+                        null
+                );
+            }
+        }
     }
 
     /**
      * Records a successful request. Resets the circuit to CLOSED state.
      */
-    public void recordSuccess() {
+    public synchronized void recordSuccess() {
         State previous = state.getAndSet(State.CLOSED);
         failureCount.set(0);
+        halfOpenAttempts.set(0);
         if (previous != State.CLOSED) {
             logger.info("Circuit breaker reset to CLOSED after successful request");
         }
@@ -109,9 +129,10 @@ public class CircuitBreaker {
      * Records a failed request. May transition the circuit to OPEN state
      * if the failure threshold is reached.
      */
-    public void recordFailure() {
+    public synchronized void recordFailure() {
         lastFailureTime = System.currentTimeMillis();
         int failures = failureCount.incrementAndGet();
+        halfOpenAttempts.set(0);
 
         if (failures >= failureThreshold) {
             State previous = state.getAndSet(State.OPEN);
@@ -133,14 +154,15 @@ public class CircuitBreaker {
     /**
      * Resets the circuit breaker to its initial CLOSED state.
      */
-    public void reset() {
+    public synchronized void reset() {
         state.set(State.CLOSED);
         failureCount.set(0);
+        halfOpenAttempts.set(0);
         lastFailureTime = 0;
         logger.info("Circuit breaker manually reset");
     }
 
-    private boolean isResetTimeoutExpired() {
+    private synchronized boolean isResetTimeoutExpired() {
         return System.currentTimeMillis() - lastFailureTime >= resetTimeout;
     }
 }
