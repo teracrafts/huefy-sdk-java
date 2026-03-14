@@ -15,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * HTTP client for the Huefy SDK.
@@ -32,7 +33,8 @@ public class HttpClient {
     private final RetryHandler retryHandler;
     private final CircuitBreaker circuitBreaker;
     private volatile String currentApiKey;
-    private volatile boolean rotatedToSecondary = false;
+    private final AtomicBoolean rotatedToSecondary = new AtomicBoolean(false);
+    private final Object rotationLock = new Object();
 
     /**
      * Creates a new HTTP client with the given configuration.
@@ -72,11 +74,15 @@ public class HttpClient {
                     return response.body();
                 }
 
-                // Handle 401 with key rotation
-                if (statusCode == 401 && !rotatedToSecondary && config.getSecondaryApiKey() != null) {
-                    logger.warn("Primary API key rejected, rotating to secondary key");
-                    rotatedToSecondary = true;
-                    currentApiKey = config.getSecondaryApiKey();
+                // Handle 401 with key rotation — only one thread performs the rotation
+                if (statusCode == 401 && !rotatedToSecondary.get() && config.getSecondaryApiKey() != null) {
+                    synchronized (rotationLock) {
+                        if (!rotatedToSecondary.get()) {
+                            logger.warn("Primary API key rejected, rotating to secondary key");
+                            currentApiKey = config.getSecondaryApiKey();
+                            rotatedToSecondary.set(true);
+                        }
+                    }
 
                     // Retry with secondary key
                     HttpResponse<String> retryResponse = executeRequest(method, path, body);
