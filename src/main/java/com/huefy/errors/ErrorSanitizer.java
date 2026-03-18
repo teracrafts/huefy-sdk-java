@@ -38,6 +38,11 @@ public final class ErrorSanitizer {
                     Pattern.compile("[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}"),
                     "Email address"
             ),
+            // IP addresses
+            new SanitizationRule(
+                    Pattern.compile("\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b"),
+                    "IP address"
+            ),
             // Credit card numbers (basic pattern)
             new SanitizationRule(
                     Pattern.compile("\\b(?:\\d{4}[\\s\\-]?){3}\\d{4}\\b"),
