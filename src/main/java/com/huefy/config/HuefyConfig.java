@@ -3,7 +3,18 @@ package com.huefy.config;
 import com.huefy.utils.Logger;
 import com.huefy.utils.NoopLogger;
 
+import java.time.Instant;
 import java.util.Objects;
+import java.util.function.Consumer;
+
+/**
+ * Rate limit information parsed from API response headers.
+ *
+ * @param limit     the maximum number of requests allowed in the window
+ * @param remaining the number of requests remaining in the current window
+ * @param resetAt   the instant at which the rate limit window resets
+ */
+record RateLimitInfo(int limit, int remaining, Instant resetAt) {}
 
 /**
  * Configuration for the Huefy SDK.
@@ -33,6 +44,8 @@ public final class HuefyConfig {
     private final boolean enableRequestSigning;
     private final boolean enableErrorSanitization;
     private final Logger logger;
+    private final Consumer<RateLimitInfo> onRateLimitUpdate;
+    private final Consumer<RateLimitInfo> onRateLimitWarning;
 
     private HuefyConfig(Builder builder) {
         this.apiKey = Objects.requireNonNull(builder.apiKey, "API key must not be null");
@@ -48,6 +61,8 @@ public final class HuefyConfig {
         this.enableRequestSigning = builder.enableRequestSigning;
         this.enableErrorSanitization = builder.enableErrorSanitization;
         this.logger = builder.logger != null ? builder.logger : new NoopLogger();
+        this.onRateLimitUpdate = builder.onRateLimitUpdate;
+        this.onRateLimitWarning = builder.onRateLimitWarning;
     }
 
     /**
@@ -93,6 +108,14 @@ public final class HuefyConfig {
 
     public Logger getLogger() {
         return logger;
+    }
+
+    public Consumer<RateLimitInfo> getOnRateLimitUpdate() {
+        return onRateLimitUpdate;
+    }
+
+    public Consumer<RateLimitInfo> getOnRateLimitWarning() {
+        return onRateLimitWarning;
     }
 
     private static String resolveBaseUrl() {
@@ -229,6 +252,8 @@ public final class HuefyConfig {
         private boolean enableRequestSigning = false;
         private boolean enableErrorSanitization = true;
         private Logger logger;
+        private Consumer<RateLimitInfo> onRateLimitUpdate;
+        private Consumer<RateLimitInfo> onRateLimitWarning;
 
         private Builder() {}
 
@@ -277,6 +302,16 @@ public final class HuefyConfig {
 
         public Builder logger(Logger logger) {
             this.logger = logger;
+            return this;
+        }
+
+        public Builder onRateLimitUpdate(Consumer<RateLimitInfo> onRateLimitUpdate) {
+            this.onRateLimitUpdate = onRateLimitUpdate;
+            return this;
+        }
+
+        public Builder onRateLimitWarning(Consumer<RateLimitInfo> onRateLimitWarning) {
+            this.onRateLimitWarning = onRateLimitWarning;
             return this;
         }
 
