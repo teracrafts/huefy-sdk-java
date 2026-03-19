@@ -4,6 +4,8 @@ import com.huefy.config.HuefyConfig;
 import com.huefy.errors.HuefyException;
 import com.huefy.errors.ErrorCode;
 import com.huefy.http.HttpClient;
+import com.huefy.models.HealthResponse;
+import com.huefy.models.HealthResponseData;
 import com.huefy.utils.Version;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -11,7 +13,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -88,10 +89,17 @@ public class HuefyClient implements AutoCloseable {
             String response = httpClient.request("GET", "/health", null);
             JsonNode node = objectMapper.readTree(response);
 
+            JsonNode dataNode = node.path("data");
+            HealthResponseData data = new HealthResponseData(
+                    dataNode.has("status") ? dataNode.get("status").asText() : "unknown",
+                    dataNode.has("timestamp") ? dataNode.get("timestamp").asText() : null,
+                    dataNode.has("version") ? dataNode.get("version").asText() : null
+            );
+
             return new HealthResponse(
-                    node.has("status") ? node.get("status").asText() : "unknown",
-                    node.has("version") ? node.get("version").asText() : null,
-                    node.has("timestamp") ? node.get("timestamp").asText() : null
+                    node.has("success") && node.get("success").asBoolean(),
+                    data,
+                    node.has("correlationId") ? node.get("correlationId").asText() : null
             );
         } catch (HuefyException e) {
             throw e;
@@ -135,16 +143,6 @@ public class HuefyClient implements AutoCloseable {
                     null,
                     false
             );
-        }
-    }
-
-    /**
-     * Health check response record.
-     */
-    public record HealthResponse(String status, String version, String timestamp) {
-
-        public boolean isHealthy() {
-            return "ok".equalsIgnoreCase(status) || "healthy".equalsIgnoreCase(status);
         }
     }
 
