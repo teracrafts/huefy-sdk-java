@@ -30,15 +30,9 @@ import java.util.Objects;
  * var client = new HuefyEmailClient("your-api-key");
  * var response = client.sendEmail("welcome", Map.of("name", "John"), "john@example.com");
  *
- * // With provider
- * var response = client.sendEmail("welcome", Map.of("name", "John"), "john@example.com", EmailProvider.SENDGRID);
- *
  * // Bulk emails
- * var requests = List.of(
- *     new SendEmailRequest("welcome", "alice@example.com", Map.of("name", "Alice")),
- *     new SendEmailRequest("welcome", "bob@example.com", Map.of("name", "Bob"))
- * );
- * var results = client.sendBulkEmails(requests);
+ * var recipients = List.of(new BulkRecipient("alice@example.com", "to", Map.of("name", "Alice")));
+ * var result = client.sendBulkEmails("welcome", recipients);
  * }</pre>
  */
 public class HuefyEmailClient extends HuefyClient {
@@ -46,6 +40,7 @@ public class HuefyEmailClient extends HuefyClient {
     private static final Logger logger = LoggerFactory.getLogger(HuefyEmailClient.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final String EMAILS_SEND_PATH = "/emails/send";
+    private static final String EMAILS_SEND_BULK_PATH = "/emails/send-bulk";
 
     /**
      * Creates a new email client with the given API key and default configuration.
@@ -139,11 +134,32 @@ public class HuefyEmailClient extends HuefyClient {
             String responseBody = httpClient.request("POST", EMAILS_SEND_PATH, body.toString());
             JsonNode responseNode = objectMapper.readTree(responseBody);
 
+            JsonNode dataNode2 = responseNode.path("data");
+            List<RecipientStatus> recipients = new ArrayList<>();
+            if (dataNode2.has("recipients") && dataNode2.get("recipients").isArray()) {
+                for (JsonNode r : dataNode2.get("recipients")) {
+                    recipients.add(new RecipientStatus(
+                            r.has("email") ? r.get("email").asText() : null,
+                            r.has("status") ? r.get("status").asText() : null,
+                            r.has("messageId") ? r.get("messageId").asText() : null,
+                            r.has("error") ? r.get("error").asText() : null,
+                            r.has("sentAt") ? r.get("sentAt").asText() : null
+                    ));
+                }
+            }
+
+            SendEmailResponseData emailData = new SendEmailResponseData(
+                    dataNode2.has("emailId") ? dataNode2.get("emailId").asText() : null,
+                    dataNode2.has("status") ? dataNode2.get("status").asText() : null,
+                    recipients,
+                    dataNode2.has("scheduledAt") ? dataNode2.get("scheduledAt").asText() : null,
+                    dataNode2.has("sentAt") ? dataNode2.get("sentAt").asText() : null
+            );
+
             return new SendEmailResponse(
                     responseNode.has("success") && responseNode.get("success").asBoolean(),
-                    responseNode.has("message") ? responseNode.get("message").asText() : null,
-                    responseNode.has("message_id") ? responseNode.get("message_id").asText() : null,
-                    responseNode.has("provider") ? responseNode.get("provider").asText() : null
+                    emailData,
+                    responseNode.has("correlationId") ? responseNode.get("correlationId").asText() : null
             );
 
         } catch (HuefyException e) {
@@ -154,55 +170,103 @@ public class HuefyEmailClient extends HuefyClient {
     }
 
     /**
-     * Sends multiple emails in bulk.
+     * Sends multiple emails in bulk using a shared template.
      *
-     * <p>Each request is sent independently. Failures for individual emails
-     * do not prevent remaining emails from being sent.</p>
-     *
-     * @param requests the list of email requests to send
-     * @return a list of results for each email
-     * @throws HuefyException if the bulk count validation fails
+     * @param templateKey the template key to use for all recipients
+     * @param recipients  the list of bulk recipients
+     * @return the bulk send response
+     * @throws HuefyException if validation fails or the request fails
      */
-    public List<BulkEmailResult> sendBulkEmails(List<SendEmailRequest> requests) {
-        Objects.requireNonNull(requests, "Requests list must not be null");
+    public SendBulkEmailsResponse sendBulkEmails(String templateKey, List<BulkRecipient> recipients) {
+        return sendBulkEmails(templateKey, recipients, null, null, null, null, null);
+    }
 
-        String countError = EmailValidators.validateBulkCount(requests.size());
-        if (countError != null) {
-            throw new HuefyException(
-                    countError,
-                    ErrorCode.VALIDATION_ERROR,
-                    null,
-                    false
+    /**
+     * Sends multiple emails in bulk using a shared template with optional settings.
+     *
+     * @param templateKey  the template key to use for all recipients
+     * @param recipients   the list of bulk recipients
+     * @param fromEmail    optional sender email address
+     * @param fromName     optional sender name
+     * @param providerType optional email provider type
+     * @param batchSize    optional batch size
+     * @param correlationId optional correlation ID
+     * @return the bulk send response
+     * @throws HuefyException if the request fails
+     */
+    public SendBulkEmailsResponse sendBulkEmails(String templateKey, List<BulkRecipient> recipients,
+                                                   String fromEmail, String fromName,
+                                                   String providerType, Integer batchSize,
+                                                   String correlationId) {
+        Objects.requireNonNull(templateKey, "templateKey must not be null");
+        Objects.requireNonNull(recipients, "recipients must not be null");
+
+        try {
+            SendBulkEmailsRequest request = new SendBulkEmailsRequest(
+                    templateKey, recipients, fromEmail, fromName, providerType, batchSize, correlationId
             );
-        }
 
-        List<BulkEmailResult> results = new ArrayList<>();
+            ObjectNode body = objectMapper.createObjectNode();
+            body.put("templateKey", request.templateKey());
 
-        for (SendEmailRequest request : requests) {
-            try {
-                SendEmailResponse response = sendEmail(
-                        request.templateKey(),
-                        request.data(),
-                        request.recipient(),
-                        request.provider()
-                );
-                results.add(new BulkEmailResult(request.recipient(), true, response, null));
-            } catch (HuefyException e) {
-                logger.warn("Bulk email failed for {}: {}", request.recipient(), e.getMessage());
-                results.add(new BulkEmailResult(
-                        request.recipient(),
-                        false,
-                        null,
-                        new BulkEmailResult.BulkEmailError(e.getMessage(), e.getCode().name())
-                ));
+            ArrayNode recipientsNode = objectMapper.createArrayNode();
+            for (BulkRecipient r : request.recipients()) {
+                ObjectNode rNode = objectMapper.createObjectNode();
+                rNode.put("email", r.email());
+                if (r.type() != null) rNode.put("type", r.type());
+                if (r.data() != null) rNode.set("data", objectMapper.valueToTree(r.data()));
+                recipientsNode.add(rNode);
             }
+            body.set("recipients", recipientsNode);
+
+            if (request.fromEmail() != null) body.put("fromEmail", request.fromEmail());
+            if (request.fromName() != null) body.put("fromName", request.fromName());
+            if (request.providerType() != null) body.put("providerType", request.providerType());
+            if (request.batchSize() != null) body.put("batchSize", request.batchSize());
+            if (request.correlationId() != null) body.put("correlationId", request.correlationId());
+
+            logger.debug("Sending bulk emails using template '{}'", templateKey);
+            String responseBody = httpClient.request("POST", EMAILS_SEND_BULK_PATH, body.toString());
+            JsonNode responseNode = objectMapper.readTree(responseBody);
+
+            JsonNode dataNode = responseNode.path("data");
+            List<RecipientStatus> recipientStatuses = new ArrayList<>();
+            if (dataNode.has("recipients") && dataNode.get("recipients").isArray()) {
+                for (JsonNode r : dataNode.get("recipients")) {
+                    recipientStatuses.add(new RecipientStatus(
+                            r.has("email") ? r.get("email").asText() : null,
+                            r.has("status") ? r.get("status").asText() : null,
+                            r.has("messageId") ? r.get("messageId").asText() : null,
+                            r.has("error") ? r.get("error").asText() : null,
+                            r.has("sentAt") ? r.get("sentAt").asText() : null
+                    ));
+                }
+            }
+
+            SendBulkEmailsResponseData bulkData = new SendBulkEmailsResponseData(
+                    dataNode.has("batchId") ? dataNode.get("batchId").asText() : null,
+                    dataNode.has("status") ? dataNode.get("status").asText() : null,
+                    dataNode.has("templateKey") ? dataNode.get("templateKey").asText() : null,
+                    dataNode.has("totalRecipients") ? dataNode.get("totalRecipients").asInt() : 0,
+                    dataNode.has("successCount") ? dataNode.get("successCount").asInt() : 0,
+                    dataNode.has("failureCount") ? dataNode.get("failureCount").asInt() : 0,
+                    dataNode.has("suppressedCount") ? dataNode.get("suppressedCount").asInt() : 0,
+                    dataNode.has("startedAt") ? dataNode.get("startedAt").asText() : null,
+                    dataNode.has("completedAt") ? dataNode.get("completedAt").asText() : null,
+                    recipientStatuses
+            );
+
+            return new SendBulkEmailsResponse(
+                    responseNode.has("success") && responseNode.get("success").asBoolean(),
+                    bulkData,
+                    responseNode.has("correlationId") ? responseNode.get("correlationId").asText() : null
+            );
+
+        } catch (HuefyException e) {
+            throw e;
+        } catch (Exception e) {
+            throw HuefyException.networkError("Failed to send bulk emails: " + e.getMessage(), e);
         }
-
-        logger.info("Bulk email complete: {}/{} succeeded",
-                results.stream().filter(BulkEmailResult::success).count(),
-                results.size());
-
-        return results;
     }
 
     /**
