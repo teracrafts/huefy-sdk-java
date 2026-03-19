@@ -1,7 +1,7 @@
 package com.huefy.models;
 
-public record SendEmailResponse(
+public record SendBulkEmailsResponse(
     boolean success,
-    SendEmailResponseData data,
+    SendBulkEmailsResponseData data,
     String correlationId
 ) {}
