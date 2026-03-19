@@ -10,10 +10,13 @@ import com.huefy.utils.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.huefy.config.RateLimitInfo;
+
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -71,6 +74,7 @@ public class HttpClient {
 
                 if (statusCode >= 200 && statusCode < 300) {
                     circuitBreaker.recordSuccess();
+                    parseRateLimitHeaders(response);
                     return response.body();
                 }
 
@@ -88,6 +92,7 @@ public class HttpClient {
                     HttpResponse<String> retryResponse = executeRequest(method, path, body);
                     if (retryResponse.statusCode() >= 200 && retryResponse.statusCode() < 300) {
                         circuitBreaker.recordSuccess();
+                        parseRateLimitHeaders(retryResponse);
                         return retryResponse.body();
                     }
                     statusCode = retryResponse.statusCode();
@@ -150,6 +155,37 @@ public class HttpClient {
         // java.net.http.HttpClient does not require explicit closing,
         // but this method exists for future resource cleanup
         logger.debug("HTTP client closed");
+    }
+
+    private void parseRateLimitHeaders(HttpResponse<?> response) {
+        if (config.getOnRateLimitUpdate() == null && config.getOnRateLimitWarning() == null) {
+            return;
+        }
+
+        String limitHeader = response.headers().firstValue("X-RateLimit-Limit").orElse(null);
+        String remainingHeader = response.headers().firstValue("X-RateLimit-Remaining").orElse(null);
+        String resetHeader = response.headers().firstValue("X-RateLimit-Reset").orElse(null);
+
+        if (limitHeader == null || remainingHeader == null || resetHeader == null) {
+            return;
+        }
+
+        try {
+            int limit = Integer.parseInt(limitHeader);
+            int remaining = Integer.parseInt(remainingHeader);
+            Instant resetAt = Instant.ofEpochSecond(Long.parseLong(resetHeader));
+            RateLimitInfo info = new RateLimitInfo(limit, remaining, resetAt);
+
+            if (config.getOnRateLimitUpdate() != null) {
+                config.getOnRateLimitUpdate().accept(info);
+            }
+
+            if (config.getOnRateLimitWarning() != null && limit > 0 && remaining < limit * 0.2) {
+                config.getOnRateLimitWarning().accept(info);
+            }
+        } catch (NumberFormatException e) {
+            logger.debug("Failed to parse rate limit headers: {}", e.getMessage());
+        }
     }
 
     private HttpResponse<String> executeRequest(String method, String path, String body)
