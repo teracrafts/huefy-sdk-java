@@ -105,8 +105,8 @@ public class RetryHandler {
         long exponentialDelay = baseDelay * (1L << Math.min(attempt, 30));
         long cappedDelay = Math.min(exponentialDelay, maxDelay);
 
-        // Multiplicative jitter: random factor between 0.75 and 1.25 (±25% to match TypeScript canonical)
-        double jitterFactor = 0.75 + ThreadLocalRandom.current().nextDouble() * 0.5;
+        // Multiplicative jitter: random factor between 0.8 and 1.2 (±20%)
+        double jitterFactor = 0.8 + ThreadLocalRandom.current().nextDouble() * 0.4;
         return (long)(cappedDelay * jitterFactor);
     }
 
