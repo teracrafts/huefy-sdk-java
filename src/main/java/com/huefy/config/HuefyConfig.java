@@ -139,7 +139,7 @@ public final class HuefyConfig {
          * Creates a retry config with default values.
          */
         public RetryConfig() {
-            this(3, 1000, 30000);
+            this(3, 500, 10000);
         }
 
         /**
