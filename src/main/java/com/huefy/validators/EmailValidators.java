@@ -9,7 +9,7 @@ public final class EmailValidators {
     private static final Pattern EMAIL_REGEX = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
     private static final int MAX_EMAIL_LENGTH = 254;
     private static final int MAX_TEMPLATE_KEY_LENGTH = 100;
-    private static final int MAX_BULK_EMAILS = 100;
+    private static final int MAX_BULK_EMAILS = 1000;
 
     private EmailValidators() {}
 
