@@ -201,6 +201,18 @@ public class HuefyEmailClient extends HuefyClient {
         Objects.requireNonNull(templateKey, "templateKey must not be null");
         Objects.requireNonNull(recipients, "recipients must not be null");
 
+        for (int i = 0; i < recipients.size(); i++) {
+            String emailErr = EmailValidators.validateEmail(recipients.get(i).email());
+            if (emailErr != null) {
+                throw new HuefyException(
+                        "recipients[" + i + "]: " + emailErr,
+                        ErrorCode.VALIDATION_ERROR,
+                        null,
+                        false
+                );
+            }
+        }
+
         try {
             SendBulkEmailsRequest request = new SendBulkEmailsRequest(
                     templateKey, recipients, fromEmail, fromName, providerType, batchSize, correlationId
