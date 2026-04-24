@@ -28,11 +28,11 @@ import java.util.Objects;
  * <pre>{@code
  * // Simple usage
  * var client = new HuefyEmailClient("your-api-key");
- * var response = client.sendEmail("welcome", Map.of("name", "John"), "john@example.com");
+ * var response = client.sendEmail(new SendEmailRequest("welcome", Map.of("name", "John"), "john@example.com"));
  *
  * // Bulk emails
  * var recipients = List.of(new BulkRecipient("alice@example.com", "to", Map.of("name", "Alice")));
- * var result = client.sendBulkEmails("welcome", recipients);
+ * var result = client.sendBulkEmails(new SendBulkEmailsRequest("welcome", recipients));
  * }</pre>
  */
 public class HuefyEmailClient extends HuefyClient {
@@ -72,29 +72,17 @@ public class HuefyEmailClient extends HuefyClient {
     }
 
     /**
-     * Sends an email using the default provider (SES).
+     * Sends an email using a template.
      *
-     * @param templateKey the template key to use
-     * @param data        the template data variables
-     * @param recipient   the recipient email address
+     * @param request the email request containing templateKey, data, recipient, and optional provider
      * @return the send email response
      * @throws HuefyException if validation fails or the request fails
      */
-    public SendEmailResponse sendEmail(String templateKey, Map<String, String> data, String recipient) {
-        return sendEmail(templateKey, data, recipient, null);
+    public SendEmailResponse sendEmail(SendEmailRequest request) {
+        return sendEmail(request.templateKey(), request.data(), request.recipient(), request.provider());
     }
 
-    /**
-     * Sends an email using the specified provider.
-     *
-     * @param templateKey the template key to use
-     * @param data        the template data variables
-     * @param recipient   the recipient email address
-     * @param provider    the email provider (null for default SES)
-     * @return the send email response
-     * @throws HuefyException if validation fails or the request fails
-     */
-    public SendEmailResponse sendEmail(String templateKey, Map<String, String> data,
+    private SendEmailResponse sendEmail(String templateKey, Map<String, String> data,
                                         String recipient, EmailProvider provider) {
         // Validate input
         List<String> errors = EmailValidators.validateSendEmailInput(templateKey, data, recipient);
@@ -172,37 +160,16 @@ public class HuefyEmailClient extends HuefyClient {
     /**
      * Sends multiple emails in bulk using a shared template.
      *
-     * @param templateKey the template key to use for all recipients
-     * @param recipients  the list of bulk recipients
+     * @param request the bulk email request containing templateKey, recipients, and optional provider
      * @return the bulk send response
      * @throws HuefyException if validation fails or the request fails
      */
-    public SendBulkEmailsResponse sendBulkEmails(String templateKey, List<BulkRecipient> recipients) {
-        return sendBulkEmails(templateKey, recipients, null, null, null, null, null);
-    }
+    public SendBulkEmailsResponse sendBulkEmails(SendBulkEmailsRequest request) {
+        Objects.requireNonNull(request.templateKey(), "templateKey must not be null");
+        Objects.requireNonNull(request.recipients(), "recipients must not be null");
 
-    /**
-     * Sends multiple emails in bulk using a shared template with optional settings.
-     *
-     * @param templateKey  the template key to use for all recipients
-     * @param recipients   the list of bulk recipients
-     * @param fromEmail    optional sender email address
-     * @param fromName     optional sender name
-     * @param providerType optional email provider type
-     * @param batchSize    optional batch size
-     * @param correlationId optional correlation ID
-     * @return the bulk send response
-     * @throws HuefyException if the request fails
-     */
-    public SendBulkEmailsResponse sendBulkEmails(String templateKey, List<BulkRecipient> recipients,
-                                                   String fromEmail, String fromName,
-                                                   String providerType, Integer batchSize,
-                                                   String correlationId) {
-        Objects.requireNonNull(templateKey, "templateKey must not be null");
-        Objects.requireNonNull(recipients, "recipients must not be null");
-
-        for (int i = 0; i < recipients.size(); i++) {
-            String emailErr = EmailValidators.validateEmail(recipients.get(i).email());
+        for (int i = 0; i < request.recipients().size(); i++) {
+            String emailErr = EmailValidators.validateEmail(request.recipients().get(i).email());
             if (emailErr != null) {
                 throw new HuefyException(
                         "recipients[" + i + "]: " + emailErr,
@@ -214,12 +181,9 @@ public class HuefyEmailClient extends HuefyClient {
         }
 
         try {
-            SendBulkEmailsRequest request = new SendBulkEmailsRequest(
-                    templateKey, recipients, fromEmail, fromName, providerType, batchSize, correlationId
-            );
 
             ObjectNode body = objectMapper.createObjectNode();
-            body.put("templateKey", request.templateKey());
+            body.put("templateKey", request.templateKey().trim());
 
             ArrayNode recipientsNode = objectMapper.createArrayNode();
             for (BulkRecipient r : request.recipients()) {
@@ -231,13 +195,9 @@ public class HuefyEmailClient extends HuefyClient {
             }
             body.set("recipients", recipientsNode);
 
-            if (request.fromEmail() != null) body.put("fromEmail", request.fromEmail());
-            if (request.fromName() != null) body.put("fromName", request.fromName());
-            if (request.providerType() != null) body.put("providerType", request.providerType());
-            if (request.batchSize() != null) body.put("batchSize", request.batchSize());
-            if (request.correlationId() != null) body.put("correlationId", request.correlationId());
+            if (request.provider() != null) body.put("providerType", request.provider().getValue());
 
-            logger.debug("Sending bulk emails using template '{}'", templateKey);
+            logger.debug("Sending bulk emails using template '{}'", request.templateKey());
             String responseBody = httpClient.request("POST", EMAILS_SEND_BULK_PATH, body.toString());
             JsonNode responseNode = objectMapper.readTree(responseBody);
 
