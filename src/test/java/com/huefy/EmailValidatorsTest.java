@@ -131,6 +131,15 @@ class EmailValidatorsTest {
         }
 
         @Test
+        @DisplayName("should accept structured data map")
+        void shouldAcceptStructuredData() {
+            assertNull(EmailValidators.validateEmailData(Map.of(
+                    "count", 2,
+                    "beta", true
+            )));
+        }
+
+        @Test
         @DisplayName("should accept empty data map")
         void shouldAcceptEmpty() {
             assertNull(EmailValidators.validateEmailData(Map.of()));
@@ -182,11 +191,11 @@ class EmailValidatorsTest {
         }
 
         @Test
-        @DisplayName("should reject count exceeding 100")
+        @DisplayName("should reject count exceeding 1000")
         void shouldRejectExceedingMax() {
-            String result = EmailValidators.validateBulkCount(101);
+            String result = EmailValidators.validateBulkCount(1001);
             assertNotNull(result);
-            assertTrue(result.contains("Maximum of 100"));
+            assertTrue(result.contains("Maximum of 1000"));
         }
     }
 
@@ -198,7 +207,7 @@ class EmailValidatorsTest {
         @DisplayName("should return empty list for valid input")
         void shouldReturnEmptyForValid() {
             List<String> errors = EmailValidators.validateSendEmailInput(
-                    "welcome", Map.of("name", "John"), "john@example.com"
+                    "welcome", Map.of("name", "John", "count", 2), "john@example.com"
             );
             assertTrue(errors.isEmpty());
         }

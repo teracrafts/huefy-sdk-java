@@ -27,7 +27,7 @@ public final class EmailValidators {
         return null;
     }
 
-    public static String validateEmailData(Map<String, String> data) {
+    public static String validateEmailData(Map<String, ?> data) {
         if (data == null) return "Template data is required";
         return null;
     }
@@ -38,7 +38,7 @@ public final class EmailValidators {
         return null;
     }
 
-    public static List<String> validateSendEmailInput(String templateKey, Map<String, String> data, String recipient) {
+    public static List<String> validateSendEmailInput(String templateKey, Map<String, ?> data, String recipient) {
         List<String> errors = new ArrayList<>();
         String keyErr = validateTemplateKey(templateKey);
         if (keyErr != null) errors.add(keyErr);

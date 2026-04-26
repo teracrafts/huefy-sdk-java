@@ -82,7 +82,25 @@ public class HuefyEmailClient extends HuefyClient {
         return sendEmail(request.templateKey(), request.data(), request.recipient(), request.provider());
     }
 
-    private SendEmailResponse sendEmail(String templateKey, Map<String, String> data,
+    static ObjectNode buildSendEmailBody(
+            String templateKey,
+            Map<String, ?> data,
+            String recipient,
+            EmailProvider provider
+    ) {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put("templateKey", templateKey.trim());
+        body.put("recipient", recipient.trim());
+        body.set("data", objectMapper.valueToTree(data));
+
+        if (provider != null) {
+            body.put("providerType", provider.getValue());
+        }
+
+        return body;
+    }
+
+    private SendEmailResponse sendEmail(String templateKey, Map<String, ?> data,
                                         String recipient, EmailProvider provider) {
         // Validate input
         List<String> errors = EmailValidators.validateSendEmailInput(templateKey, data, recipient);
@@ -96,8 +114,16 @@ public class HuefyEmailClient extends HuefyClient {
         }
 
         // Check template data for PII and warn (matching Go SDK behavior)
-        for (Map.Entry<String, String> entry : data.entrySet()) {
-            List<String> piiTypes = Security.detectPii(entry.getValue());
+        for (Map.Entry<String, ?> entry : data.entrySet()) {
+            String valueText;
+            try {
+                valueText = entry.getValue() instanceof CharSequence
+                        ? entry.getValue().toString()
+                        : objectMapper.writeValueAsString(entry.getValue());
+            } catch (Exception ignored) {
+                valueText = String.valueOf(entry.getValue());
+            }
+            List<String> piiTypes = Security.detectPii(valueText);
             if (!piiTypes.isEmpty()) {
                 logger.warn("Potential PII detected in template data field '{}': {}. " +
                         "Consider removing or encrypting these fields.", entry.getKey(), piiTypes);
@@ -105,18 +131,7 @@ public class HuefyEmailClient extends HuefyClient {
         }
 
         try {
-            // Build request body
-            ObjectNode body = objectMapper.createObjectNode();
-            body.put("template_key", templateKey.trim());
-            body.put("recipient", recipient.trim());
-
-            ObjectNode dataNode = objectMapper.createObjectNode();
-            data.forEach(dataNode::put);
-            body.set("data", dataNode);
-
-            if (provider != null) {
-                body.put("provider", provider.getValue());
-            }
+            ObjectNode body = buildSendEmailBody(templateKey, data, recipient, provider);
 
             logger.debug("Sending email to {} using template '{}'", recipient, templateKey);
             String responseBody = httpClient.request("POST", EMAILS_SEND_PATH, body.toString());

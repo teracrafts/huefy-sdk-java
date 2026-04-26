@@ -1,4 +1,4 @@
-# huefy-java
+# huefy-sdk
 
 Official Java SDK for [Huefy](https://huefy.dev) — transactional email delivery made simple.
 
@@ -8,8 +8,8 @@ Official Java SDK for [Huefy](https://huefy.dev) — transactional email deliver
 
 ```xml
 <dependency>
-    <groupId>com.huefy</groupId>
-    <artifactId>huefy-java</artifactId>
+    <groupId>com.teracrafts</groupId>
+    <artifactId>huefy-sdk</artifactId>
     <version>1.0.0</version>
 </dependency>
 ```
@@ -17,32 +17,31 @@ Official Java SDK for [Huefy](https://huefy.dev) — transactional email deliver
 ### Gradle
 
 ```groovy
-implementation 'com.huefy:huefy-java:1.0.0'
+implementation 'com.teracrafts:huefy-sdk:1.0.0'
 ```
 
 ## Requirements
 
-- Java 11+
+- Java 17+
 
 ## Quick Start
 
 ```java
-import com.huefy.HuefyEmailClient;
-import com.huefy.model.Recipient;
-import com.huefy.model.SendEmailRequest;
-import com.huefy.model.SendEmailResponse;
+import com.huefy.client.HuefyEmailClient;
+import com.huefy.models.SendEmailRequest;
+import com.huefy.models.SendEmailResponse;
 import java.util.Map;
 
 HuefyEmailClient client = HuefyEmailClient.builder("sdk_your_api_key").build();
 
-SendEmailRequest request = SendEmailRequest.builder()
-    .templateKey("welcome-email")
-    .recipient(new Recipient("alice@example.com", "Alice"))
-    .variables(Map.of("firstName", "Alice", "trialDays", 14))
-    .build();
+SendEmailRequest request = new SendEmailRequest(
+    "welcome-email",
+    Map.of("firstName", "Alice", "trialDays", 14),
+    "alice@example.com"
+);
 
-SendEmailResponse response = client.sendEmail(request).get();
-System.out.println("Message ID: " + response.getMessageId());
+SendEmailResponse response = client.sendEmail(request);
+System.out.println("Email ID: " + response.data().emailId());
 client.close();
 ```
 
@@ -91,25 +90,21 @@ client.close();
 ## Bulk Email
 
 ```java
-import com.huefy.model.BulkEmailRequest;
-import com.huefy.model.BulkEmailResponse;
+import com.huefy.models.BulkRecipient;
+import com.huefy.models.SendBulkEmailsRequest;
+import com.huefy.models.SendBulkEmailsResponse;
 import java.util.List;
 
-BulkEmailRequest bulk = BulkEmailRequest.builder()
-    .emails(List.of(
-        SendEmailRequest.builder()
-            .templateKey("promo")
-            .recipient(new Recipient("bob@example.com"))
-            .build(),
-        SendEmailRequest.builder()
-            .templateKey("promo")
-            .recipient(new Recipient("carol@example.com"))
-            .build()
-    ))
-    .build();
+SendBulkEmailsRequest bulk = new SendBulkEmailsRequest(
+    "promo",
+    List.of(
+        new BulkRecipient("bob@example.com", null, null),
+        new BulkRecipient("carol@example.com", null, null)
+    )
+);
 
-BulkEmailResponse result = client.sendBulkEmails(bulk).get();
-System.out.printf("Sent: %d, Failed: %d%n", result.getTotalSent(), result.getTotalFailed());
+SendBulkEmailsResponse result = client.sendBulkEmails(bulk);
+System.out.printf("Sent: %d, Failed: %d%n", result.data().successCount(), result.data().failureCount());
 ```
 
 ## Error Handling
@@ -151,15 +146,15 @@ try {
 ## Health Check
 
 ```java
-HealthResponse health = client.healthCheck().get();
-if (!"healthy".equals(health.getStatus())) {
-    System.err.println("Huefy degraded: " + health.getStatus());
+HealthResponse health = client.healthCheck();
+if (!"healthy".equals(health.data().status())) {
+    System.err.println("Huefy degraded: " + health.data().status());
 }
 ```
 
 ## Local Development
 
-Set `HUEFY_MODE=local` to point the SDK at a local Huefy server, or override the base URL via the builder:
+`HUEFY_MODE=local` resolves to `https://api.huefy.on/api/v1/sdk` in the current SDK. To target localhost, override the base URL via the builder:
 
 ```java
 HuefyEmailClient client = HuefyEmailClient.builder("sdk_local_key")

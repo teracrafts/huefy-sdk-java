@@ -3,18 +3,8 @@ package com.huefy.config;
 import com.huefy.utils.Logger;
 import com.huefy.utils.NoopLogger;
 
-import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Consumer;
-
-/**
- * Rate limit information parsed from API response headers.
- *
- * @param limit     the maximum number of requests allowed in the window
- * @param remaining the number of requests remaining in the current window
- * @param resetAt   the instant at which the rate limit window resets
- */
-record RateLimitInfo(int limit, int remaining, Instant resetAt) {}
 
 /**
  * Configuration for the Huefy SDK.

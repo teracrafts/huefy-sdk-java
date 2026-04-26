@@ -4,11 +4,11 @@ import java.util.Map;
 
 public record SendEmailRequest(
     String templateKey,
-    Map<String, String> data,
+    Map<String, ?> data,
     String recipient,
     EmailProvider provider
 ) {
-    public SendEmailRequest(String templateKey, Map<String, String> data, String recipient) {
+    public SendEmailRequest(String templateKey, Map<String, ?> data, String recipient) {
         this(templateKey, data, recipient, null);
     }
 }
