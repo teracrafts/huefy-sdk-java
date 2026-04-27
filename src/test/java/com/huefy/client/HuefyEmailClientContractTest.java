@@ -2,6 +2,7 @@ package com.huefy.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.huefy.models.EmailProvider;
+import com.huefy.models.BulkRecipient;
 import com.huefy.models.SendEmailRecipient;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,5 +57,16 @@ class HuefyEmailClientContractTest {
         assertEquals("john@example.com", recipient.get("email").asText());
         assertEquals("cc", recipient.get("type").asText());
         assertEquals("vip", recipient.get("data").get("segment").asText());
+    }
+
+    @Test
+    @DisplayName("bulk recipient validation rejects unsupported recipient types")
+    void bulkRecipientValidationRejectsUnsupportedType() {
+        String error = com.huefy.validators.EmailValidators.validateBulkRecipient(
+                new BulkRecipient("john@example.com", "reply-to", Map.of("segment", "vip"))
+        );
+
+        assertNotNull(error);
+        assertTrue(error.contains("Recipient type"));
     }
 }

@@ -66,6 +66,19 @@ public final class EmailValidators {
         return null;
     }
 
+    public static String validateBulkRecipient(com.huefy.models.BulkRecipient recipient) {
+        if (recipient == null) return "Recipient email is required";
+        String emailErr = validateEmail(recipient.email());
+        if (emailErr != null) return emailErr;
+        if (recipient.type() != null && !recipient.type().isBlank()) {
+            String normalizedType = recipient.type().trim().toLowerCase(java.util.Locale.ROOT);
+            if (!VALID_RECIPIENT_TYPES.contains(normalizedType)) {
+                return "Recipient type must be one of: to, cc, bcc";
+            }
+        }
+        return null;
+    }
+
     public static List<String> validateSendEmailRecipientInput(String templateKey, Map<String, ?> data, SendEmailRecipient recipient) {
         List<String> errors = new ArrayList<>();
         String keyErr = validateTemplateKey(templateKey);

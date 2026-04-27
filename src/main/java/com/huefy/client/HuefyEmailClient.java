@@ -301,11 +301,16 @@ public class HuefyEmailClient extends HuefyClient {
         Objects.requireNonNull(request.templateKey(), "templateKey must not be null");
         Objects.requireNonNull(request.recipients(), "recipients must not be null");
 
+        String templateErr = EmailValidators.validateTemplateKey(request.templateKey());
+        if (templateErr != null) {
+            throw new HuefyException(templateErr, ErrorCode.VALIDATION_ERROR, null, false);
+        }
+
         for (int i = 0; i < request.recipients().size(); i++) {
-            String emailErr = EmailValidators.validateEmail(request.recipients().get(i).email());
-            if (emailErr != null) {
+            String recipientErr = EmailValidators.validateBulkRecipient(request.recipients().get(i));
+            if (recipientErr != null) {
                 throw new HuefyException(
-                        "recipients[" + i + "]: " + emailErr,
+                        "recipients[" + i + "]: " + recipientErr,
                         ErrorCode.VALIDATION_ERROR,
                         null,
                         false
@@ -321,8 +326,10 @@ public class HuefyEmailClient extends HuefyClient {
             ArrayNode recipientsNode = objectMapper.createArrayNode();
             for (BulkRecipient r : request.recipients()) {
                 ObjectNode rNode = objectMapper.createObjectNode();
-                rNode.put("email", r.email());
-                if (r.type() != null) rNode.put("type", r.type());
+                rNode.put("email", r.email().trim());
+                if (r.type() != null && !r.type().isBlank()) {
+                    rNode.put("type", r.type().trim().toLowerCase(java.util.Locale.ROOT));
+                }
                 if (r.data() != null) rNode.set("data", objectMapper.valueToTree(r.data()));
                 recipientsNode.add(rNode);
             }
