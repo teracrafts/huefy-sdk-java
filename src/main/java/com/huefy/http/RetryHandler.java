@@ -107,7 +107,7 @@ public class RetryHandler {
 
         // Multiplicative jitter: random factor between 0.8 and 1.2 (±20%)
         double jitterFactor = 0.8 + ThreadLocalRandom.current().nextDouble() * 0.4;
-        return (long)(cappedDelay * jitterFactor);
+        return Math.min((long) (cappedDelay * jitterFactor), maxDelay);
     }
 
     /**

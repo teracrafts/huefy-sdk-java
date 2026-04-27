@@ -2,6 +2,7 @@ package com.huefy.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.huefy.models.EmailProvider;
+import com.huefy.models.SendEmailRecipient;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -38,5 +39,22 @@ class HuefyEmailClientContractTest {
         assertEquals(2, data.get("count").asInt());
         assertTrue(data.get("beta").asBoolean());
         assertEquals("admin", data.get("roles").get(0).asText());
+    }
+
+    @Test
+    @DisplayName("single-send body encodes recipient objects without losing data")
+    void singleSendBodyEncodesRecipientObject() {
+        JsonNode body = HuefyEmailClient.buildSendEmailBody(
+                "welcome",
+                Map.of("name", "John"),
+                new SendEmailRecipient("john@example.com", "cc", Map.of("segment", "vip")),
+                EmailProvider.SES
+        );
+
+        JsonNode recipient = body.get("recipient");
+        assertTrue(recipient.isObject());
+        assertEquals("john@example.com", recipient.get("email").asText());
+        assertEquals("cc", recipient.get("type").asText());
+        assertEquals("vip", recipient.get("data").get("segment").asText());
     }
 }

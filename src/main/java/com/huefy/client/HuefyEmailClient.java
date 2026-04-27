@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,6 +80,9 @@ public class HuefyEmailClient extends HuefyClient {
      * @throws HuefyException if validation fails or the request fails
      */
     public SendEmailResponse sendEmail(SendEmailRequest request) {
+        if (request.recipientObject() != null) {
+            return sendEmail(request.templateKey(), request.data(), request.recipientObject(), request.provider());
+        }
         return sendEmail(request.templateKey(), request.data(), request.recipient(), request.provider());
     }
 
@@ -91,6 +95,32 @@ public class HuefyEmailClient extends HuefyClient {
         ObjectNode body = objectMapper.createObjectNode();
         body.put("templateKey", templateKey.trim());
         body.put("recipient", recipient.trim());
+        body.set("data", objectMapper.valueToTree(data));
+
+        if (provider != null) {
+            body.put("providerType", provider.getValue());
+        }
+
+        return body;
+    }
+
+    static ObjectNode buildSendEmailBody(
+            String templateKey,
+            Map<String, ?> data,
+            SendEmailRecipient recipient,
+            EmailProvider provider
+    ) {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put("templateKey", templateKey.trim());
+        ObjectNode recipientNode = objectMapper.createObjectNode();
+        recipientNode.put("email", recipient.email().trim());
+        if (recipient.type() != null && !recipient.type().isBlank()) {
+            recipientNode.put("type", recipient.type().trim().toLowerCase(java.util.Locale.ROOT));
+        }
+        if (recipient.data() != null) {
+            recipientNode.set("data", objectMapper.valueToTree(recipient.data()));
+        }
+        body.set("recipient", recipientNode);
         body.set("data", objectMapper.valueToTree(data));
 
         if (provider != null) {
@@ -134,6 +164,94 @@ public class HuefyEmailClient extends HuefyClient {
             ObjectNode body = buildSendEmailBody(templateKey, data, recipient, provider);
 
             logger.debug("Sending email to {} using template '{}'", recipient, templateKey);
+            String responseBody = httpClient.request("POST", EMAILS_SEND_PATH, body.toString());
+            JsonNode responseNode = objectMapper.readTree(responseBody);
+
+            JsonNode dataNode2 = responseNode.path("data");
+            List<RecipientStatus> recipients = new ArrayList<>();
+            if (dataNode2.has("recipients") && dataNode2.get("recipients").isArray()) {
+                for (JsonNode r : dataNode2.get("recipients")) {
+                    recipients.add(new RecipientStatus(
+                            r.has("email") ? r.get("email").asText() : null,
+                            r.has("status") ? r.get("status").asText() : null,
+                            r.has("messageId") ? r.get("messageId").asText() : null,
+                            r.has("error") ? r.get("error").asText() : null,
+                            r.has("sentAt") ? r.get("sentAt").asText() : null
+                    ));
+                }
+            }
+
+            SendEmailResponseData emailData = new SendEmailResponseData(
+                    dataNode2.has("emailId") ? dataNode2.get("emailId").asText() : null,
+                    dataNode2.has("status") ? dataNode2.get("status").asText() : null,
+                    recipients,
+                    dataNode2.has("scheduledAt") ? dataNode2.get("scheduledAt").asText() : null,
+                    dataNode2.has("sentAt") ? dataNode2.get("sentAt").asText() : null
+            );
+
+            return new SendEmailResponse(
+                    responseNode.has("success") && responseNode.get("success").asBoolean(),
+                    emailData,
+                    responseNode.has("correlationId") ? responseNode.get("correlationId").asText() : null
+            );
+
+        } catch (HuefyException e) {
+            throw e;
+        } catch (Exception e) {
+            throw HuefyException.networkError("Failed to send email: " + e.getMessage(), e);
+        }
+    }
+
+    private SendEmailResponse sendEmail(String templateKey, Map<String, ?> data,
+                                        SendEmailRecipient recipient, EmailProvider provider) {
+        List<String> errors = EmailValidators.validateSendEmailRecipientInput(templateKey, data, recipient);
+        if (!errors.isEmpty()) {
+            throw new HuefyException(
+                    "Validation failed: " + String.join("; ", errors),
+                    ErrorCode.VALIDATION_ERROR,
+                    null,
+                    false
+            );
+        }
+
+        for (Map.Entry<String, ?> entry : data.entrySet()) {
+            String valueText;
+            try {
+                valueText = entry.getValue() instanceof CharSequence
+                        ? entry.getValue().toString()
+                        : objectMapper.writeValueAsString(entry.getValue());
+            } catch (Exception ignored) {
+                valueText = String.valueOf(entry.getValue());
+            }
+            List<String> piiTypes = Security.detectPii(valueText);
+            if (!piiTypes.isEmpty()) {
+                logger.warn("Potential PII detected in template data field '{}': {}. " +
+                        "Consider removing or encrypting these fields.", entry.getKey(), piiTypes);
+            }
+        }
+
+        if (recipient.data() != null) {
+            for (Map.Entry<String, ?> entry : recipient.data().entrySet()) {
+                String valueText;
+                try {
+                    valueText = entry.getValue() instanceof CharSequence
+                            ? entry.getValue().toString()
+                            : objectMapper.writeValueAsString(entry.getValue());
+                } catch (Exception ignored) {
+                    valueText = String.valueOf(entry.getValue());
+                }
+                List<String> piiTypes = Security.detectPii(valueText);
+                if (!piiTypes.isEmpty()) {
+                    logger.warn("Potential PII detected in recipient data field '{}': {}. " +
+                            "Consider removing or encrypting these fields.", entry.getKey(), piiTypes);
+                }
+            }
+        }
+
+        try {
+            ObjectNode body = buildSendEmailBody(templateKey, data, recipient, provider);
+
+            logger.debug("Sending email to {} using template '{}'", recipient.email(), templateKey);
             String responseBody = httpClient.request("POST", EMAILS_SEND_PATH, body.toString());
             JsonNode responseNode = objectMapper.readTree(responseBody);
 
@@ -234,13 +352,23 @@ public class HuefyEmailClient extends HuefyClient {
                     dataNode.has("batchId") ? dataNode.get("batchId").asText() : null,
                     dataNode.has("status") ? dataNode.get("status").asText() : null,
                     dataNode.has("templateKey") ? dataNode.get("templateKey").asText() : null,
+                    dataNode.has("templateVersion") ? dataNode.get("templateVersion").asInt() : 0,
+                    dataNode.has("senderUsed") ? dataNode.get("senderUsed").asText() : null,
+                    dataNode.has("senderVerified") && dataNode.get("senderVerified").asBoolean(),
                     dataNode.has("totalRecipients") ? dataNode.get("totalRecipients").asInt() : 0,
+                    dataNode.has("processedCount") ? dataNode.get("processedCount").asInt() : 0,
                     dataNode.has("successCount") ? dataNode.get("successCount").asInt() : 0,
                     dataNode.has("failureCount") ? dataNode.get("failureCount").asInt() : 0,
                     dataNode.has("suppressedCount") ? dataNode.get("suppressedCount").asInt() : 0,
                     dataNode.has("startedAt") ? dataNode.get("startedAt").asText() : null,
                     dataNode.has("completedAt") ? dataNode.get("completedAt").asText() : null,
-                    recipientStatuses
+                    recipientStatuses,
+                    dataNode.has("errors")
+                            ? objectMapper.convertValue(dataNode.get("errors"), new TypeReference<List<Map<String, Object>>>() {})
+                            : List.of(),
+                    dataNode.has("metadata")
+                            ? objectMapper.convertValue(dataNode.get("metadata"), new TypeReference<Map<String, Object>>() {})
+                            : Map.of()
             );
 
             return new SendBulkEmailsResponse(

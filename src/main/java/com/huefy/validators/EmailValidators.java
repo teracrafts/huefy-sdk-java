@@ -1,8 +1,11 @@
 package com.huefy.validators;
 
+import com.huefy.models.SendEmailRecipient;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public final class EmailValidators {
@@ -10,6 +13,7 @@ public final class EmailValidators {
     private static final int MAX_EMAIL_LENGTH = 254;
     private static final int MAX_TEMPLATE_KEY_LENGTH = 100;
     private static final int MAX_BULK_EMAILS = 1000;
+    private static final Set<String> VALID_RECIPIENT_TYPES = Set.of("to", "cc", "bcc");
 
     private EmailValidators() {}
 
@@ -45,6 +49,30 @@ public final class EmailValidators {
         String dataErr = validateEmailData(data);
         if (dataErr != null) errors.add(dataErr);
         String emailErr = validateEmail(recipient);
+        if (emailErr != null) errors.add(emailErr);
+        return errors;
+    }
+
+    public static String validateRecipient(SendEmailRecipient recipient) {
+        if (recipient == null) return "Recipient email is required";
+        String emailErr = validateEmail(recipient.email());
+        if (emailErr != null) return emailErr;
+        if (recipient.type() != null && !recipient.type().isBlank()) {
+            String normalizedType = recipient.type().trim().toLowerCase(java.util.Locale.ROOT);
+            if (!VALID_RECIPIENT_TYPES.contains(normalizedType)) {
+                return "Recipient type must be one of: to, cc, bcc";
+            }
+        }
+        return null;
+    }
+
+    public static List<String> validateSendEmailRecipientInput(String templateKey, Map<String, ?> data, SendEmailRecipient recipient) {
+        List<String> errors = new ArrayList<>();
+        String keyErr = validateTemplateKey(templateKey);
+        if (keyErr != null) errors.add(keyErr);
+        String dataErr = validateEmailData(data);
+        if (dataErr != null) errors.add(dataErr);
+        String emailErr = validateRecipient(recipient);
         if (emailErr != null) errors.add(emailErr);
         return errors;
     }

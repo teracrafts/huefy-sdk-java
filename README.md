@@ -32,7 +32,7 @@ import com.huefy.models.SendEmailRequest;
 import com.huefy.models.SendEmailResponse;
 import java.util.Map;
 
-HuefyEmailClient client = HuefyEmailClient.builder("sdk_your_api_key").build();
+HuefyEmailClient client = new HuefyEmailClient("sdk_your_api_key");
 
 SendEmailRequest request = new SendEmailRequest(
     "welcome-email",
@@ -47,8 +47,7 @@ client.close();
 
 ## Key Features
 
-- **Async API** — all methods return `CompletableFuture<T>` for non-blocking use
-- **Synchronous convenience** — call `.get()` or `.join()` for blocking variants
+- **Synchronous API** — client methods return concrete response objects and throw `HuefyException` on failure
 - **Builder pattern** — all request and config objects use fluent builders
 - **Retry with exponential backoff** — configurable attempts, base delay, ceiling, and jitter
 - **Circuit breaker** — opens after 5 consecutive failures, probes after 30 s
@@ -110,21 +109,18 @@ System.out.printf("Sent: %d, Failed: %d%n", result.data().successCount(), result
 ## Error Handling
 
 ```java
-import com.huefy.exception.HuefyAuthException;
-import com.huefy.exception.HuefyRateLimitException;
-import com.huefy.exception.HuefyCircuitOpenException;
-import java.util.concurrent.ExecutionException;
+import com.huefy.errors.ErrorCode;
+import com.huefy.errors.HuefyException;
 
 try {
-    SendEmailResponse response = client.sendEmail(request).get();
-    System.out.println("Delivered: " + response.getMessageId());
-} catch (ExecutionException e) {
-    Throwable cause = e.getCause();
-    if (cause instanceof HuefyAuthException) {
+    SendEmailResponse response = client.sendEmail(request);
+    System.out.println("Delivered: " + response.data().emailId());
+} catch (HuefyException e) {
+    if (e.getCode() == ErrorCode.AUTHENTICATION_ERROR) {
         System.err.println("Invalid API key");
-    } else if (cause instanceof HuefyRateLimitException rle) {
-        System.err.printf("Rate limited. Retry after %ds%n", rle.getRetryAfter());
-    } else if (cause instanceof HuefyCircuitOpenException) {
+    } else if (e.getCode() == ErrorCode.RATE_LIMIT_ERROR && e.getRetryAfter() != null) {
+        System.err.printf("Rate limited. Retry after %dms%n", e.getRetryAfter());
+    } else if (e.getCode() == ErrorCode.CIRCUIT_OPEN) {
         System.err.println("Circuit open — service unavailable, backing off");
     } else {
         throw e;
@@ -134,14 +130,13 @@ try {
 
 ### Error Code Reference
 
-| Exception | Code | Meaning |
-|-----------|------|---------|
-| `HuefyInitException` | 1001 | Client failed to initialise |
-| `HuefyAuthException` | 1102 | API key rejected |
-| `HuefyNetworkException` | 1201 | Upstream request failed |
-| `HuefyCircuitOpenException` | 1301 | Circuit breaker tripped |
-| `HuefyRateLimitException` | 2003 | Rate limit exceeded |
-| `HuefyTemplateMissingException` | 2005 | Template key not found |
+| Type | Code | Meaning |
+|------|------|---------|
+| `HuefyException` | `AUTHENTICATION_ERROR` | API key rejected |
+| `HuefyException` | `RATE_LIMIT_ERROR` | Rate limit exceeded |
+| `HuefyException` | `CIRCUIT_OPEN` | Circuit breaker tripped |
+| `HuefyException` | `NETWORK_ERROR`, `TIMEOUT_ERROR`, `SERVICE_UNAVAILABLE` | Transport or upstream failure |
+| `HuefyException` | `VALIDATION_ERROR` | Invalid request input |
 
 ## Health Check
 
@@ -154,11 +149,12 @@ if (!"healthy".equals(health.data().status())) {
 
 ## Local Development
 
-`HUEFY_MODE=local` resolves to `https://api.huefy.on/api/v1/sdk` in the current SDK. To target localhost, override the base URL via the builder:
+`HUEFY_MODE=local` resolves to `https://api.huefy.on/api/v1/sdk`. If you want to bypass Caddy and hit the raw app port directly, override the base URL to `http://localhost:8080/api/v1/sdk`:
 
 ```java
-HuefyEmailClient client = HuefyEmailClient.builder("sdk_local_key")
-    .baseUrl("http://localhost:3000/api/v1/sdk")
+HuefyEmailClient client = HuefyEmailClient.emailBuilder()
+    .apiKey("sdk_local_key")
+    .baseUrl("https://api.huefy.on/api/v1/sdk")
     .build();
 ```
 

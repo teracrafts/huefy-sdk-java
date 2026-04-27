@@ -1,5 +1,6 @@
 package com.huefy;
 
+import com.huefy.models.SendEmailRecipient;
 import com.huefy.validators.EmailValidators;
 
 import org.junit.jupiter.api.DisplayName;
@@ -236,6 +237,40 @@ class EmailValidatorsTest {
                     "", null, "john@example.com"
             );
             assertEquals(2, errors.size());
+        }
+
+        @Test
+        @DisplayName("should accept recipient object input")
+        void shouldAcceptRecipientObject() {
+            List<String> errors = EmailValidators.validateSendEmailRecipientInput(
+                    "welcome",
+                    Map.of("name", "John"),
+                    new SendEmailRecipient("john@example.com", "cc", Map.of("plan", "pro"))
+            );
+            assertTrue(errors.isEmpty());
+        }
+
+        @Test
+        @DisplayName("should reject invalid recipient object email")
+        void shouldRejectInvalidRecipientObject() {
+            List<String> errors = EmailValidators.validateSendEmailRecipientInput(
+                    "welcome",
+                    Map.of("name", "John"),
+                    new SendEmailRecipient("invalid-email", "cc", Map.of())
+            );
+            assertEquals(1, errors.size());
+            assertTrue(errors.get(0).startsWith("Invalid email address"));
+        }
+
+        @Test
+        @DisplayName("should reject invalid recipient object type")
+        void shouldRejectInvalidRecipientObjectType() {
+            List<String> errors = EmailValidators.validateSendEmailRecipientInput(
+                    "welcome",
+                    Map.of("name", "John"),
+                    new SendEmailRecipient("john@example.com", "weird", Map.of())
+            );
+            assertEquals(List.of("Recipient type must be one of: to, cc, bcc"), errors);
         }
     }
 }
