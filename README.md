@@ -27,9 +27,9 @@ implementation 'com.teracrafts:huefy-sdk:1.0.0'
 ## Quick Start
 
 ```java
-import com.huefy.client.HuefyEmailClient;
-import com.huefy.models.SendEmailRequest;
-import com.huefy.models.SendEmailResponse;
+import com.teracrafts.huefy.client.HuefyEmailClient;
+import com.teracrafts.huefy.models.SendEmailRequest;
+import com.teracrafts.huefy.models.SendEmailResponse;
 import java.util.Map;
 
 HuefyEmailClient client = new HuefyEmailClient("sdk_your_api_key");
@@ -89,9 +89,9 @@ client.close();
 ## Bulk Email
 
 ```java
-import com.huefy.models.BulkRecipient;
-import com.huefy.models.SendBulkEmailsRequest;
-import com.huefy.models.SendBulkEmailsResponse;
+import com.teracrafts.huefy.models.BulkRecipient;
+import com.teracrafts.huefy.models.SendBulkEmailsRequest;
+import com.teracrafts.huefy.models.SendBulkEmailsResponse;
 import java.util.List;
 
 SendBulkEmailsRequest bulk = new SendBulkEmailsRequest(
@@ -109,8 +109,8 @@ System.out.printf("Sent: %d, Failed: %d%n", result.data().successCount(), result
 ## Error Handling
 
 ```java
-import com.huefy.errors.ErrorCode;
-import com.huefy.errors.HuefyException;
+import com.teracrafts.huefy.errors.ErrorCode;
+import com.teracrafts.huefy.errors.HuefyException;
 
 try {
     SendEmailResponse response = client.sendEmail(request);

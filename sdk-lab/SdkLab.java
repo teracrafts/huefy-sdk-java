@@ -1,10 +1,10 @@
-package com.huefy.lab;
+package com.teracrafts.huefy.lab;
 
-import com.huefy.client.HuefyClient;
-import com.huefy.config.HuefyConfig;
-import com.huefy.errors.ErrorSanitizer;
-import com.huefy.http.CircuitBreaker;
-import com.huefy.security.Security;
+import com.teracrafts.huefy.client.HuefyClient;
+import com.teracrafts.huefy.config.HuefyConfig;
+import com.teracrafts.huefy.errors.ErrorSanitizer;
+import com.teracrafts.huefy.http.CircuitBreaker;
+import com.teracrafts.huefy.security.Security;
 
 import java.net.URI;
 import java.net.http.HttpRequest;
