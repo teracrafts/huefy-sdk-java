@@ -1,20 +1,26 @@
 # Huefy Java SDK Lab
 
-A standalone verification runner that exercises core SDK infrastructure.
+Verifies the core email contract through the real `HuefyEmailClient` against a local stub server.
 
 ## Run
 
 ```bash
-mvn exec:java -Plab
+mvn compile exec:java -Plab -q
 ```
+
+from `sdks/java/`.
 
 ## Scenarios
 
-1. Initialization — create client with dummy key, no exception
-2. Config validation — empty API key throws
-3. HMAC signing — 64-char hex signature
-4. Error sanitization — IP and email redacted
-5. PII detection — email/ssn identified
-6. Circuit breaker state — new breaker starts CLOSED
-7. Health check — invoke `GET /health` against the configured base URL
-8. Cleanup — close client, no exception
+1. Initialization
+2. Single-send contract shaping
+3. Bulk-send contract shaping
+4. Invalid single rejection
+5. Invalid bulk rejection
+6. Health request path behavior
+7. Cleanup
+
+## Notes
+
+- The lab exercises real email-client methods, not generic infrastructure helpers.
+- It verifies request keys, normalization, parsed responses, and validation-before-transport behavior.
