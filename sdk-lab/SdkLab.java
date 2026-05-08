@@ -34,6 +34,12 @@ public class SdkLab {
         System.out.println("=== Huefy Java SDK Lab ===");
         System.out.println();
 
+        if (isLiveMode()) {
+            runLiveLab();
+            printSummary();
+            return;
+        }
+
         try (StubServer server = new StubServer()) {
             server.start();
 
@@ -68,9 +74,140 @@ public class SdkLab {
         }
     }
 
+    private static boolean isLiveMode() {
+        return "live".equalsIgnoreCase(System.getenv("HUEFY_SDK_LAB_MODE"));
+    }
+
+    private static String requireEnv(String name) {
+        String value = System.getenv(name);
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalStateException(name + " is required in live mode");
+        }
+        return value.trim();
+    }
+
+    private static EmailProvider resolveLiveProvider() {
+        String provider = System.getenv("HUEFY_SDK_LIVE_PROVIDER");
+        if (provider == null || provider.isBlank()) {
+            return null;
+        }
+        return switch (provider.trim().toLowerCase()) {
+            case "sendgrid" -> EmailProvider.SENDGRID;
+            case "ses" -> EmailProvider.SES;
+            case "mailgun" -> EmailProvider.MAILGUN;
+            default -> null;
+        };
+    }
+
+    private static void runLiveLab() {
+        HuefyEmailClient client = null;
+        try {
+            client = buildClient(requireEnv("HUEFY_SDK_LIVE_BASE_URL"), requireEnv("HUEFY_SDK_LIVE_API_KEY"));
+            pass("Initialization");
+        } catch (Exception e) {
+            fail("Initialization", e.getMessage());
+        }
+
+        if (client == null) {
+            return;
+        }
+
+        String recipient = requireEnv("HUEFY_SDK_LIVE_RECIPIENT");
+        String templateKey = requireEnv("HUEFY_SDK_LIVE_TEMPLATE_KEY");
+        EmailProvider provider = resolveLiveProvider();
+
+        try {
+            SendEmailResponse response = client.sendEmail(new SendEmailRequest(
+                    templateKey,
+                    Map.of("FirstName", "SDK Live"),
+                    recipient,
+                    provider
+            ));
+            if (!response.success()) {
+                fail("Single-send live behavior", "expected successful live send");
+            } else {
+                pass("Single-send live behavior");
+            }
+        } catch (Exception e) {
+            fail("Single-send live behavior", e.getMessage());
+        }
+
+        try {
+            var response = client.sendBulkEmails(new SendBulkEmailsRequest(
+                    templateKey,
+                    List.of(new BulkRecipient(recipient, "TO", Map.of())),
+                    provider
+            ));
+            if (!response.success() || response.data().totalRecipients() < 1) {
+                fail("Bulk-send live behavior", "expected successful live bulk send");
+            } else {
+                pass("Bulk-send live behavior");
+            }
+        } catch (Exception e) {
+            fail("Bulk-send live behavior", e.getMessage());
+        }
+
+        try {
+            client.sendEmail(new SendEmailRequest(templateKey, Map.of(), "bad-email"));
+            fail("Invalid single rejection", "expected validation failure");
+        } catch (HuefyException e) {
+            pass("Invalid single rejection");
+        } catch (Exception e) {
+            fail("Invalid single rejection", e.getMessage());
+        }
+
+        try {
+            client.sendBulkEmails(new SendBulkEmailsRequest(
+                    templateKey,
+                    List.of(new BulkRecipient("bad-email", "reply-to", Map.of()))
+            ));
+            fail("Invalid bulk rejection", "expected validation failure");
+        } catch (HuefyException e) {
+            pass("Invalid bulk rejection");
+        } catch (Exception e) {
+            fail("Invalid bulk rejection", e.getMessage());
+        }
+
+        try {
+            var health = client.healthCheck();
+            if (!"healthy".equals(health.data().status())) {
+                fail("Health request path behavior", "expected healthy live response");
+            } else {
+                pass("Health request path behavior");
+            }
+        } catch (Exception e) {
+            fail("Health request path behavior", e.getMessage());
+        }
+
+        try {
+            client.close();
+            pass("Cleanup");
+        } catch (Exception e) {
+            fail("Cleanup", e.getMessage());
+        }
+    }
+
+    private static void printSummary() {
+        System.out.println();
+        System.out.println("========================================");
+        System.out.printf("Results: %d passed, %d failed%n", passed, failed);
+        System.out.println("========================================");
+        System.out.println();
+
+        if (failed == 0) {
+            System.out.println("All verifications passed!");
+        } else {
+            System.exit(1);
+        }
+    }
+
     private static HuefyEmailClient buildClient(String baseUrl) {
+        return buildClient(baseUrl, "sdk_lab_test_key_xxxxxxxxxxxx");
+    }
+
+    private static HuefyEmailClient buildClient(String baseUrl, String apiKey) {
         return new HuefyEmailClient(HuefyConfig.builder()
-                .apiKey("sdk_lab_test_key_xxxxxxxxxxxx")
+                .apiKey(apiKey)
                 .baseUrl(baseUrl)
                 .timeout(2_000)
                 .retryConfig(new HuefyConfig.RetryConfig(0, 50, 50))
